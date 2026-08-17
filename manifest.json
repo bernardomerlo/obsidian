@@ -1,0 +1,9 @@
+{
+	"id": "gantt",
+	"name": "Task Gantt",
+	"version": "1.0.0",
+	"minAppVersion": "1.0.0",
+	"description": "Interactive Gantt chart, Table, Kanban, and Calendar views for tasks with status history tracking and lifecycle analytics.",
+	"author": "Bernardo",
+	"isDesktopOnly": false
+}
