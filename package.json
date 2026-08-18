@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-task-gantt",
+	"name": "obsidian-life-manager",
 	"version": "1.0.0",
-	"description": "Interactive Gantt chart, Table, Kanban, and Calendar views for tasks with status history tracking and lifecycle analytics.",
+	"description": "Complete workspace for personal and professional life management: tasks, projects, Gantt timeline, Kanban board, calendar, and workflow analytics.",
 	"main": "main.js",
 	"type": "module",
 	"scripts": {

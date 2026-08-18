@@ -5,6 +5,12 @@ import { HistoryEntry, Task } from '../../types';
 import { diffInDays, formatDate, formatDisplayDate, parseDate } from '../../utils/dateUtils';
 import { createStatusBadge, getStatusColor } from '../../utils/domUtils';
 
+export interface TaskModalOptions {
+	initialStatus?: string;
+	initialStartDate?: Date | null;
+	initialFolder?: string;
+}
+
 export class TaskModal extends Modal {
 	plugin: GanttPlugin;
 	task?: Task;
@@ -29,7 +35,7 @@ export class TaskModal extends Modal {
 
 	private folderInputEl: any = null;
 
-	constructor(app: App, plugin: GanttPlugin, task?: Task) {
+	constructor(app: App, plugin: GanttPlugin, task?: Task, options?: TaskModalOptions) {
 		super(app);
 		this.plugin = plugin;
 		this.task = task;
@@ -50,8 +56,9 @@ export class TaskModal extends Modal {
 			this.bodyContent = task.bodyContent;
 			this.history = JSON.parse(JSON.stringify(task.history));
 		} else {
-			this.folder = this.plugin.settings.taskFolder || '';
-			this.startDate = null;
+			this.folder = options?.initialFolder || this.plugin.settings.taskFolder || '';
+			this.startDate = options?.initialStartDate || null;
+			this.status = options?.initialStatus || 'todo';
 			this.history = [];
 		}
 	}

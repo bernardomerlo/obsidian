@@ -56,10 +56,7 @@ export class KanbanViewComponent {
 			});
 			setIcon(addBtn, 'plus');
 			addBtn.onclick = () => {
-				const modal = new TaskModal(this.plugin.app, this.plugin);
-				// @ts-ignore
-				modal.status = colKey;
-				modal.open();
+				new TaskModal(this.plugin.app, this.plugin, undefined, { initialStatus: colKey }).open();
 			};
 
 			// Column Cards Body (Drop Zone)

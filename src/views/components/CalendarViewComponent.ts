@@ -98,10 +98,7 @@ export class CalendarViewComponent {
 			setIcon(addCellBtn, 'plus');
 			addCellBtn.onclick = (e) => {
 				e.stopPropagation();
-				const modal = new TaskModal(this.plugin.app, this.plugin);
-				// @ts-ignore
-				modal.startDate = cellDate;
-				modal.open();
+				new TaskModal(this.plugin.app, this.plugin, undefined, { initialStartDate: cellDate }).open();
 			};
 
 			// Tasks active on this date

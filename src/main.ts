@@ -26,8 +26,8 @@ export default class GanttPlugin extends Plugin {
 		// Register Commands
 		registerCommands(this);
 
-		// Ribbon Icon to quickly open Task Gantt
-		this.addRibbonIcon('bar-chart-2', 'Task Gantt', async () => {
+		// Ribbon Icon to quickly open Life Manager
+		this.addRibbonIcon('layout-dashboard', 'Life Manager', async () => {
 			await activateGanttView(this);
 		});
 

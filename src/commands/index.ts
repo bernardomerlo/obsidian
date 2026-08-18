@@ -5,10 +5,10 @@ import { TaskModal } from '../views/components/TaskModal';
 import { GANTT_VIEW_TYPE, GanttView } from '../views/GanttView';
 
 export function registerCommands(plugin: GanttPlugin): void {
-	// Command: Open Gantt View
+	// Command: Open Life Manager View
 	plugin.addCommand({
-		id: 'open-gantt-view',
-		name: 'Open Task Gantt view',
+		id: 'open-workspace-view',
+		name: 'Open Life Manager workspace',
 		callback: async () => {
 			await activateGanttView(plugin);
 		},
@@ -46,10 +46,10 @@ export function registerCommands(plugin: GanttPlugin): void {
 	// Command: Refresh Task Data
 	plugin.addCommand({
 		id: 'refresh-task-data',
-		name: 'Refresh task data',
+		name: 'Refresh Life Manager data',
 		callback: async () => {
 			await plugin.taskManager.refreshAllTasks();
-			new Notice('Task data refreshed');
+			new Notice('Life Manager data refreshed');
 		},
 	});
 }

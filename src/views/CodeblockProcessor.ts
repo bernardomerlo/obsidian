@@ -9,9 +9,13 @@ import { TableViewComponent } from './components/TableViewComponent';
 
 export class CodeblockProcessor {
 	static register(plugin: GanttPlugin): void {
-		plugin.registerMarkdownCodeBlockProcessor('gantt', async (source, el, ctx) => {
+		const handler = async (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
 			await this.process(plugin, source, el, ctx);
-		});
+		};
+
+		plugin.registerMarkdownCodeBlockProcessor('life-manager', handler);
+		plugin.registerMarkdownCodeBlockProcessor('manager', handler);
+		plugin.registerMarkdownCodeBlockProcessor('gantt', handler);
 	}
 
 	private static async process(

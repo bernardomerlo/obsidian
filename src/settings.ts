@@ -36,7 +36,7 @@ export class GanttSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		containerEl.createEl('h2', { text: 'Task Gantt Settings' });
+		containerEl.createEl('h2', { text: 'Life Manager Settings' });
 
 		new Setting(containerEl)
 			.setName('Task folder')
@@ -106,7 +106,7 @@ export class GanttSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Default view')
-			.setDesc('Initial view mode when opening the Task Gantt leaf.')
+			.setDesc('Initial view mode when opening the Life Manager workspace.')
 			.addDropdown((dropdown) =>
 				dropdown
 					.addOption('gantt', 'Gantt Chart')

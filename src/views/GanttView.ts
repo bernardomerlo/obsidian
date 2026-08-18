@@ -8,7 +8,7 @@ import { KanbanViewComponent } from './components/KanbanViewComponent';
 import { TableViewComponent } from './components/TableViewComponent';
 import { TaskModal } from './components/TaskModal';
 
-export const GANTT_VIEW_TYPE = 'task-gantt-view';
+export const GANTT_VIEW_TYPE = 'life-manager-view';
 
 export class GanttView extends ItemView {
 	plugin: GanttPlugin;
@@ -43,11 +43,11 @@ export class GanttView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return 'Task Gantt';
+		return 'Life Manager';
 	}
 
 	getIcon(): string {
-		return 'bar-chart-2';
+		return 'layout-dashboard';
 	}
 
 	async onOpen(): Promise<void> {
