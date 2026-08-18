@@ -2,7 +2,7 @@ import { setIcon } from 'obsidian';
 import type GanttPlugin from '../../main';
 import { TaskParser } from '../../parser/TaskParser';
 import { Task, TreeRenderItem } from '../../types';
-import { diffInDays, formatDate, formatDisplayDate } from '../../utils/dateUtils';
+import { formatDate } from '../../utils/dateUtils';
 import { createStatusBadge, getFolderColor, getStatusColor } from '../../utils/domUtils';
 import { StatusPickerModal } from './StatusPickerModal';
 import { TaskModal } from './TaskModal';
@@ -28,8 +28,8 @@ export class TableViewComponent {
 
 		if (this.tasks.length === 0) {
 			const empty = this.containerEl.createDiv({ cls: 'gantt-empty-state' });
-			empty.createEl('div', { cls: 'gantt-empty-title', text: 'No tasks found' });
-			const newBtn = empty.createEl('button', { cls: 'mod-cta', text: '+ Create New Task' });
+			empty.createDiv({ cls: 'gantt-empty-title', text: 'No tasks found' });
+			const newBtn = empty.createEl('button', { cls: 'mod-cta', text: '+ create new task' });
 			newBtn.onclick = () => new TaskModal(this.plugin.app, this.plugin).open();
 			return;
 		}
@@ -42,11 +42,11 @@ export class TableViewComponent {
 		const renderItems: TreeRenderItem[] = this.plugin.settings.groupByFolder
 			? TaskParser.flattenVisibleTree(treeNodes, this.collapsedFolders)
 			: this.getSortedTasks(this.tasks).map((t) => ({
-					type: 'task',
+					type: 'task' as const,
 					task: t,
 					id: t.id,
 					level: 0,
-					folderNode: null as any,
+					folderNode: undefined,
 			  }));
 
 		// Table element
@@ -124,7 +124,7 @@ export class TableViewComponent {
 				});
 				link.onclick = (e) => {
 					e.preventDefault();
-					this.plugin.app.workspace.getLeaf(false).openFile(task.file);
+					void this.plugin.app.workspace.getLeaf(false).openFile(task.file);
 				};
 
 				// Status
@@ -161,7 +161,7 @@ export class TableViewComponent {
 				const actionsCell = row.createEl('td', { cls: 'gantt-table-actions-cell' });
 				const editBtn = actionsCell.createEl('button', {
 					cls: 'clickable-icon',
-					attr: { 'aria-label': 'Edit Task' },
+					attr: { 'aria-label': 'Edit task' },
 				});
 				setIcon(editBtn, 'pencil');
 				editBtn.onclick = (e) => {
@@ -171,12 +171,12 @@ export class TableViewComponent {
 
 				const openBtn = actionsCell.createEl('button', {
 					cls: 'clickable-icon',
-					attr: { 'aria-label': 'Open Note' },
+					attr: { 'aria-label': 'Open note' },
 				});
 				setIcon(openBtn, 'file-text');
 				openBtn.onclick = (e) => {
 					e.stopPropagation();
-					this.plugin.app.workspace.getLeaf(false).openFile(task.file);
+					void this.plugin.app.workspace.getLeaf(false).openFile(task.file);
 				};
 			}
 		}
@@ -244,8 +244,8 @@ export class TableViewComponent {
 
 	private getSortedTasks(tasks: Task[]): Task[] {
 		return [...tasks].sort((a, b) => {
-			let valA: any;
-			let valB: any;
+			let valA: string | number;
+			let valB: string | number;
 
 			switch (this.sortColumn) {
 				case 'title':

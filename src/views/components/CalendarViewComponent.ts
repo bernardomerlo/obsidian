@@ -3,11 +3,8 @@ import type GanttPlugin from '../../main';
 import { Task } from '../../types';
 import {
 	addDays,
-	diffInDays,
 	endOfMonth,
 	endOfWeek,
-	formatDate,
-	formatDisplayDate,
 	isSameDay,
 	isToday,
 	startOfDay,
@@ -58,7 +55,7 @@ export class CalendarViewComponent {
 		};
 
 		const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-		const monthTitle = header.createEl('h2', {
+		header.createEl('h2', {
 			cls: 'gantt-cal-title',
 			text: `${months[this.currentDate.getMonth()]} ${this.currentDate.getFullYear()}`,
 		});

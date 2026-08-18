@@ -37,7 +37,7 @@ export class AnalyticsViewComponent {
 
 		// Left: Stage Duration Breakdown
 		const leftCol = twoCol.createDiv({ cls: 'gantt-analytics-card' });
-		leftCol.createEl('h3', { text: '⏱ Average Time in Each Status (Cycle Time)' });
+		leftCol.createEl('h3', { text: 'Average time in each status (cycle time)' });
 
 		if (stats.stageStats.length === 0) {
 			leftCol.createDiv({ cls: 'gantt-text-muted', text: 'No stage transitions recorded.' });
@@ -59,13 +59,13 @@ export class AnalyticsViewComponent {
 				bar.style.width = `${Math.max(8, pct)}%`;
 				bar.style.backgroundColor = stage.color;
 
-				const val = row.createDiv({ cls: 'gantt-stage-stat-val', text: `${stage.avgDays} days avg (${stage.totalDays}d total)` });
+				row.createDiv({ cls: 'gantt-stage-stat-val', text: `${stage.avgDays} days avg (${stage.totalDays}d total)` });
 			}
 		}
 
 		// Right: Rework & Bottleneck Watchlist
 		const rightCol = twoCol.createDiv({ cls: 'gantt-analytics-card' });
-		rightCol.createEl('h3', { text: '⚡ Rework & Bottleneck Watchlist' });
+		rightCol.createEl('h3', { text: 'Rework & bottleneck watchlist' });
 
 		if (stats.reworkTasks.length === 0) {
 			rightCol.createDiv({ cls: 'gantt-text-muted', text: 'No status regressions detected! Flow is smooth.' });
@@ -89,10 +89,10 @@ export class AnalyticsViewComponent {
 
 		// Full Width: Activity Transition Stream
 		const fullCard = this.containerEl.createDiv({ cls: 'gantt-analytics-card gantt-full-card' });
-		fullCard.createEl('h3', { text: '📜 Recent Status Transition Activity' });
+		fullCard.createEl('h3', { text: 'Recent status transition activity' });
 
 		if (stats.recentTransitions.length === 0) {
-			fullCard.createDiv({ cls: 'gantt-text-muted', text: 'No transitions found in # History.' });
+			fullCard.createDiv({ cls: 'gantt-text-muted', text: 'No transitions found in # history.' });
 		} else {
 			const stream = fullCard.createDiv({ cls: 'gantt-activity-stream' });
 			for (const tr of stats.recentTransitions) {
@@ -100,7 +100,7 @@ export class AnalyticsViewComponent {
 				item.createSpan({ cls: 'gantt-activity-date', text: tr.formattedDate });
 
 				const desc = item.createDiv({ cls: 'gantt-activity-desc' });
-				const taskLink = desc.createEl('span', { cls: 'gantt-activity-task', text: tr.taskTitle });
+				desc.createSpan({ cls: 'gantt-activity-task', text: tr.taskTitle });
 				
 				if (tr.fromStatus) {
 					desc.createSpan({ text: ' moved from ' });

@@ -36,7 +36,7 @@ export interface Task {
 	formattedEnd: string;
 	status: string;
 	tags: string[];
-	priority: 'low' | 'normal' | 'high' | 'urgent' | string;
+	priority: string;
 	progress: number; // 0 to 100
 	dependencies: string[]; // file paths or titles
 	link?: string[];
@@ -82,7 +82,7 @@ export type TreeRenderItem =
 			task: Task;
 			id: string;
 			level: number;
-			folderNode: FolderTreeNode;
+			folderNode?: FolderTreeNode;
 	  };
 
 export interface ProjectGroup {

@@ -9,8 +9,6 @@ export class AnalyticsService {
 		let inProgressTasks = 0;
 		let totalLeadTime = 0;
 		let leadTimeTaskCount = 0;
-		let totalCycleTime = 0;
-		let cycleTimeTaskCount = 0;
 		let totalReworkCount = 0;
 
 		const stageMap = new Map<string, { totalDays: number; taskCount: number }>();

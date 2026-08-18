@@ -9,10 +9,10 @@ export function parseDate(value: unknown): Date | null {
 		return isNaN(value.getTime()) ? null : startOfDay(value);
 	}
 
-	let str = String(value).trim();
-	// Remove wikilink brackets if present [[01-08-2026]] -> 01-08-2026
-	str = str.replace(/^\[\[(.*?)\]\]$/, '$1').trim();
+	const strVal = typeof value === 'string' || typeof value === 'number' ? String(value).trim() : '';
+	if (!strVal) return null;
 
+	let str = strVal.replace(/^\[\[(.*?)\]\]$/, '$1').trim();
 	if (!str) return null;
 
 	// Check for DD-MM-YYYY or DD/MM/YYYY

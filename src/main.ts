@@ -27,7 +27,7 @@ export default class GanttPlugin extends Plugin {
 		registerCommands(this);
 
 		// Ribbon Icon to quickly open Life Manager
-		this.addRibbonIcon('layout-dashboard', 'Life Manager', async () => {
+		this.addRibbonIcon('layout-dashboard', 'Life manager', async () => {
 			await activateGanttView(this);
 		});
 

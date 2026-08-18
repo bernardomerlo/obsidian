@@ -1,6 +1,6 @@
 import { TFile } from 'obsidian';
 import { FolderTreeNode, HistoryEntry, ProjectGroup, StatusSegment, Task, TreeRenderItem } from '../types';
-import { diffInDays, formatDate, formatDisplayDate, parseDate, startOfDay } from '../utils/dateUtils';
+import { diffInDays, formatDate, parseDate, startOfDay } from '../utils/dateUtils';
 import { getStatusColor, normalizeStatus } from '../utils/domUtils';
 
 export class TaskParser {
@@ -15,7 +15,7 @@ export class TaskParser {
 		const startDate = parseDate(frontmatter['start'] || frontmatter['startDate'] || frontmatter['created']);
 		const endDate = parseDate(frontmatter['end'] || frontmatter['endDate'] || frontmatter['due']);
 		
-		let status = String(frontmatter['status'] || '').trim();
+		let status = (typeof frontmatter['status'] === 'string' ? frontmatter['status'] : '').trim();
 		// If status is empty in frontmatter, but history has entries, use the latest history status
 		if (!status && historyEntries.length > 0) {
 			const last = historyEntries[historyEntries.length - 1];
@@ -23,7 +23,7 @@ export class TaskParser {
 		}
 		if (!status) status = 'todo';
 
-		const priority = (String(frontmatter['priority'] || 'normal').toLowerCase()) as any;
+		const priority = (typeof frontmatter['priority'] === 'string' ? frontmatter['priority'] : 'normal').toLowerCase();
 		
 		let tags: string[] = [];
 		if (Array.isArray(frontmatter['tags'])) {
@@ -36,8 +36,10 @@ export class TaskParser {
 		}
 
 		let progress = 0;
-		if (frontmatter['progress'] !== undefined) {
-			progress = parseInt(String(frontmatter['progress']), 10) || 0;
+		if (typeof frontmatter['progress'] === 'number') {
+			progress = frontmatter['progress'];
+		} else if (typeof frontmatter['progress'] === 'string') {
+			progress = parseInt(frontmatter['progress'], 10) || 0;
 		} else {
 			const stLower = normalizeStatus(status);
 			if (stLower === 'done') {
@@ -126,7 +128,7 @@ export class TaskParser {
 	/**
 	 * Extracts frontmatter as Record<string, any> and the remaining text
 	 */
-	static splitFrontmatter(rawContent: string): { frontmatter: Record<string, any>; bodyAndHistory: string } {
+	static splitFrontmatter(rawContent: string): { frontmatter: Record<string, unknown>; bodyAndHistory: string } {
 		const match = rawContent.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
 		if (!match || !match[1]) {
 			return { frontmatter: {}, bodyAndHistory: rawContent };
@@ -134,7 +136,7 @@ export class TaskParser {
 
 		const yamlBlock = match[1];
 		const bodyAndHistory = match[2] || '';
-		const frontmatter: Record<string, any> = {};
+		const frontmatter: Record<string, unknown> = {};
 
 		const lines = yamlBlock.split(/\r?\n/);
 		let currentKey: string | null = null;
@@ -211,7 +213,7 @@ export class TaskParser {
 			// - 01-08-2026 - hom
 			// - [01-08-2026] : dev
 			// - [[01-08-2026]] : dev (notes)
-			const entryMatch = trimmed.match(/^[-*+]\s+(?:\[\[([^\]]+)\]\]|([0-9\/\.\-]+))\s*[-:]\s*(.+)$/);
+			const entryMatch = trimmed.match(/^[-*+]\s+(?:\[\[([^\]]+)\]\]|([0-9/.-]+))\s*[-:]\s*(.+)$/);
 			if (entryMatch) {
 				const rawDate = (entryMatch[1] || entryMatch[2] || '').trim();
 				const rawStatus = (entryMatch[3] || '').trim();
@@ -341,7 +343,7 @@ export class TaskParser {
 		newEndDate?: string
 	): string {
 		// Update frontmatter status
-		const frontmatterUpdates: Record<string, any> = { status: newStatus };
+		const frontmatterUpdates: Record<string, unknown> = { status: newStatus };
 		if (newStartDate) frontmatterUpdates['start'] = newStartDate;
 		if (newEndDate) frontmatterUpdates['end'] = newEndDate;
 
@@ -361,7 +363,7 @@ export class TaskParser {
 	/**
 	 * Safely updates YAML frontmatter without breaking comments or formatting
 	 */
-	static updateFrontmatter(rawContent: string, updates: Record<string, any>): string {
+	static updateFrontmatter(rawContent: string, updates: Record<string, unknown>): string {
 		const match = rawContent.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
 
 		if (!match) {
@@ -374,7 +376,8 @@ export class TaskParser {
 						yaml += `  - ${item}\n`;
 					}
 				} else if (val !== undefined && val !== null) {
-					yaml += `${key}: ${val}\n`;
+					const valStr = typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean' ? String(val) : JSON.stringify(val);
+					yaml += `${key}: ${valStr}\n`;
 				}
 			}
 			yaml += '---\n\n';
@@ -399,11 +402,12 @@ export class TaskParser {
 					yamlBlock += `\n${arrayStr.trimEnd()}`;
 				}
 			} else {
+				const valStr = typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean' ? String(val) : JSON.stringify(val);
 				const singleKeyRegex = new RegExp(`^${key}:.*$`, 'm');
 				if (singleKeyRegex.test(yamlBlock)) {
-					yamlBlock = yamlBlock.replace(singleKeyRegex, `${key}: ${val}`);
+					yamlBlock = yamlBlock.replace(singleKeyRegex, `${key}: ${valStr}`);
 				} else {
-					yamlBlock += `\n${key}: ${val}`;
+					yamlBlock += `\n${key}: ${valStr}`;
 				}
 			}
 		}

@@ -51,12 +51,10 @@ export function getStatusColor(statusName: string, customStatuses: StatusConfig[
 	}
 
 	// Check default map
-	if (DEFAULT_STATUS_COLORS[raw]) {
-		return DEFAULT_STATUS_COLORS[raw]!;
-	}
-	if (DEFAULT_STATUS_COLORS[normalized]) {
-		return DEFAULT_STATUS_COLORS[normalized]!;
-	}
+	const defaultRaw = DEFAULT_STATUS_COLORS[raw];
+	if (defaultRaw) return defaultRaw;
+	const defaultNorm = DEFAULT_STATUS_COLORS[normalized];
+	if (defaultNorm) return defaultNorm;
 
 	// Generate deterministic pleasant HSL color based on string hash
 	let hash = 0;

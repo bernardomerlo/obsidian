@@ -1,14 +1,14 @@
-import { Editor, MarkdownView, Notice, TFile } from 'obsidian';
+import { Notice } from 'obsidian';
 import type GanttPlugin from '../main';
 import { StatusPickerModal } from '../views/components/StatusPickerModal';
 import { TaskModal } from '../views/components/TaskModal';
-import { GANTT_VIEW_TYPE, GanttView } from '../views/GanttView';
+import { GANTT_VIEW_TYPE } from '../views/GanttView';
 
 export function registerCommands(plugin: GanttPlugin): void {
 	// Command: Open Life Manager View
 	plugin.addCommand({
 		id: 'open-workspace-view',
-		name: 'Open Life Manager workspace',
+		name: 'Open workspace',
 		callback: async () => {
 			await activateGanttView(plugin);
 		},
@@ -46,10 +46,10 @@ export function registerCommands(plugin: GanttPlugin): void {
 	// Command: Refresh Task Data
 	plugin.addCommand({
 		id: 'refresh-task-data',
-		name: 'Refresh Life Manager data',
+		name: 'Refresh workspace data',
 		callback: async () => {
 			await plugin.taskManager.refreshAllTasks();
-			new Notice('Life Manager data refreshed');
+			new Notice('Workspace data refreshed');
 		},
 	});
 }
@@ -64,5 +64,5 @@ export async function activateGanttView(plugin: GanttPlugin): Promise<void> {
 		leaf = newLeaf;
 	}
 
-	workspace.revealLeaf(leaf);
+	void workspace.revealLeaf(leaf);
 }

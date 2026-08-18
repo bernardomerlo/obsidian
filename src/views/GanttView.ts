@@ -1,6 +1,6 @@
 import { ItemView, setIcon, WorkspaceLeaf } from 'obsidian';
 import type GanttPlugin from '../main';
-import { FilterOptions, GanttScale, Task, ViewType } from '../types';
+import { FilterOptions, GanttScale, ViewType } from '../types';
 import { AnalyticsViewComponent } from './components/AnalyticsViewComponent';
 import { CalendarViewComponent } from './components/CalendarViewComponent';
 import { GanttChartComponent } from './components/GanttChartComponent';
@@ -42,7 +42,7 @@ export class GanttView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return 'Life Manager';
+		return 'Life manager';
 	}
 
 	getIcon(): string {
@@ -159,7 +159,7 @@ export class GanttView extends ItemView {
 
 		// Filter by Status dropdown
 		const statusFilter = rightGroup.createEl('select', { cls: 'gantt-status-filter-select' });
-		statusFilter.createEl('option', { value: '', text: 'All Statuses' });
+		statusFilter.createEl('option', { value: '', text: 'All statuses' });
 		for (const st of this.plugin.settings.statuses) {
 			statusFilter.createEl('option', { value: st.id, text: st.name });
 		}
@@ -175,11 +175,11 @@ export class GanttView extends ItemView {
 		// Refresh Button
 		const refreshBtn = rightGroup.createEl('button', {
 			cls: 'gantt-action-icon-btn',
-			title: 'Refresh Tasks',
+			title: 'Refresh tasks',
 		});
 		setIcon(refreshBtn, 'rotate-cw');
-		refreshBtn.onclick = async () => {
-			await this.plugin.taskManager.refreshAllTasks();
+		refreshBtn.onclick = () => {
+			void this.plugin.taskManager.refreshAllTasks();
 		};
 
 		// New Task Button

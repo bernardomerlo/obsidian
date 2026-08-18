@@ -1,8 +1,8 @@
 {
 	"id": "life-manager",
 	"name": "Life Manager",
-	"version": "1.0.1",
-	"minAppVersion": "1.0.0",
+	"version": "1.0.2",
+	"minAppVersion": "1.7.2",
 	"description": "Complete workspace for personal and professional life management: tasks, projects, Gantt timeline, Kanban board, calendar, and workflow analytics.",
 	"author": "Bernardo",
 	"isDesktopOnly": false

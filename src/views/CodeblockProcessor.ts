@@ -1,6 +1,6 @@
 import { MarkdownPostProcessorContext, parseYaml } from 'obsidian';
 import type GanttPlugin from '../main';
-import { CodeblockConfig, GanttScale, Task, ViewType } from '../types';
+import { CodeblockConfig, GanttScale, ViewType } from '../types';
 import { AnalyticsViewComponent } from './components/AnalyticsViewComponent';
 import { CalendarViewComponent } from './components/CalendarViewComponent';
 import { GanttChartComponent } from './components/GanttChartComponent';
@@ -33,7 +33,8 @@ export class CodeblockProcessor {
 				config = (parseYaml(source) as CodeblockConfig) || {};
 			}
 		} catch (e) {
-			el.createDiv({ cls: 'gantt-error-msg', text: `Invalid YAML in gantt codeblock: ${e}` });
+			const errText = e instanceof Error ? e.message : String(e);
+			el.createDiv({ cls: 'gantt-error-msg', text: `Invalid YAML in gantt codeblock: ${errText}` });
 			return;
 		}
 

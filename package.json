@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-life-manager",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "Complete workspace for personal and professional life management: tasks, projects, Gantt timeline, Kanban board, calendar, and workflow analytics.",
 	"main": "main.js",
 	"type": "module",

@@ -2,8 +2,8 @@ import { App, Modal, Notice, Setting, TFolder } from 'obsidian';
 import type GanttPlugin from '../../main';
 import { TaskParser } from '../../parser/TaskParser';
 import { HistoryEntry, Task } from '../../types';
-import { diffInDays, formatDate, formatDisplayDate, parseDate } from '../../utils/dateUtils';
-import { createStatusBadge, getStatusColor } from '../../utils/domUtils';
+import { diffInDays, formatDate, parseDate } from '../../utils/dateUtils';
+import { getStatusColor } from '../../utils/domUtils';
 
 export interface TaskModalOptions {
 	initialStatus?: string;
@@ -32,7 +32,7 @@ export class TaskModal extends Modal {
 	private bodyContent: string = '';
 	private history: HistoryEntry[] = [];
 
-	private folderInputEl: any = null;
+	private folderInputEl: { setValue: (v: string) => void } | null = null;
 
 	constructor(app: App, plugin: GanttPlugin, task?: Task, options?: TaskModalOptions) {
 		super(app);
@@ -52,7 +52,7 @@ export class TaskModal extends Modal {
 			this.tarefa = task.tarefa ? [...task.tarefa] : [];
 			this.priority = task.priority;
 			this.bodyContent = task.bodyContent;
-			this.history = JSON.parse(JSON.stringify(task.history));
+			this.history = JSON.parse(JSON.stringify(task.history)) as HistoryEntry[];
 		} else {
 			this.folder = options?.initialFolder || this.plugin.settings.taskFolder || '';
 			this.startDate = options?.initialStartDate || null;
@@ -67,7 +67,7 @@ export class TaskModal extends Modal {
 		contentEl.addClass('gantt-task-modal');
 
 		contentEl.createEl('h2', {
-			text: this.isNew ? 'Create New Task' : `Edit Task: ${this.task?.title}`,
+			text: this.isNew ? 'Create task' : `Edit task: ${this.task?.title || ''}`,
 		});
 
 		if (this.isNew) {
@@ -77,7 +77,7 @@ export class TaskModal extends Modal {
 				.setDesc('Selecione o tipo de tarefa')
 				.addDropdown((dropdown) => {
 					dropdown.addOption('css', 'CSS');
-					dropdown.addOption('pbi', 'PBI / Task');
+					dropdown.addOption('pbi', 'Pbi / task');
 					dropdown.setValue(this.tipo);
 					dropdown.onChange((val: string) => {
 						this.tipo = val as 'css' | 'pbi';
@@ -93,7 +93,7 @@ export class TaskModal extends Modal {
 			let idInput: HTMLInputElement | null = null;
 			idSetting.addText((text) => {
 				idInput = text.inputEl;
-				text.setPlaceholder('ex: 221611')
+				text.setPlaceholder('Ex: 221611')
 					.setValue(this.taskId)
 					.onChange((val) => {
 						this.taskId = val.trim();
@@ -103,7 +103,7 @@ export class TaskModal extends Modal {
 
 			const updatePlaceholder = () => {
 				if (idInput) {
-					idInput.placeholder = this.tipo === 'css' ? 'ex: 221611' : 'ex: BG-8564d';
+					idInput.placeholder = this.tipo === 'css' ? 'Ex: 221611' : 'Ex: Implementar login ou 12345';
 				}
 				if (this.taskId) {
 					this.title = this.tipo === 'css' && !this.taskId.startsWith('CSS-') ? `CSS-${this.taskId}` : this.taskId;
@@ -152,7 +152,7 @@ export class TaskModal extends Modal {
 				.setDesc('Pasta onde a nota será criada no vault')
 				.addText((text) => {
 					this.folderInputEl = text;
-					text.setPlaceholder('ex: SEFAZ/Alpha/Agência Virtual')
+					text.setPlaceholder('Ex: SEFAZ/alpha/agência virtual')
 						.setValue(this.folder)
 						.onChange((val) => {
 							this.folder = val;
@@ -215,7 +215,7 @@ export class TaskModal extends Modal {
 
 		// Start and End Date
 		const dateRow = contentEl.createDiv({ cls: 'gantt-modal-date-row' });
-		new Setting(dateRow).setName('Start Date').addText((text) => {
+		new Setting(dateRow).setName('Start date').addText((text) => {
 			text.inputEl.type = 'date';
 			text.setValue(this.startDate ? formatDate(this.startDate, 'YYYY-MM-DD') : '');
 			text.onChange((val) => {
@@ -223,7 +223,7 @@ export class TaskModal extends Modal {
 			});
 		});
 
-		new Setting(dateRow).setName('End Date').addText((text) => {
+		new Setting(dateRow).setName('End date').addText((text) => {
 			text.inputEl.type = 'date';
 			text.setValue(this.endDate ? formatDate(this.endDate, 'YYYY-MM-DD') : '');
 			text.onChange((val) => {
@@ -233,7 +233,7 @@ export class TaskModal extends Modal {
 
 		new Setting(contentEl).setName('Tags').addText((text) =>
 			text
-				.setPlaceholder('backend, auth (comma separated)')
+				.setPlaceholder('Backend, auth (comma separated)')
 				.setValue(this.tags.join(', '))
 				.onChange((val) => {
 					this.tags = val
@@ -246,7 +246,7 @@ export class TaskModal extends Modal {
 		// Note Body content
 		new Setting(contentEl)
 			.setName('Note body')
-			.setDesc('Markdown content before # History');
+			.setDesc('Markdown content before # history');
 
 		const bodyTextArea = contentEl.createEl('textarea', {
 			cls: 'gantt-modal-body-textarea',
@@ -258,7 +258,7 @@ export class TaskModal extends Modal {
 		});
 
 		// Status History Section
-		contentEl.createEl('h3', { text: 'Status History (# History)' });
+		contentEl.createEl('h3', { text: 'Status history (# history)' });
 		const historyContainer = contentEl.createDiv({ cls: 'gantt-modal-history-container' });
 		this.renderHistorySection(historyContainer);
 
@@ -268,11 +268,11 @@ export class TaskModal extends Modal {
 		if (this.task) {
 			const openNoteBtn = footer.createEl('button', {
 				cls: 'mod-secondary',
-				text: 'Open Note',
+				text: 'Open note',
 			});
 			openNoteBtn.onclick = () => {
 				if (this.task) {
-					this.app.workspace.getLeaf(false).openFile(this.task.file);
+					void this.app.workspace.getLeaf(false).openFile(this.task.file);
 					this.close();
 				}
 			};
@@ -280,7 +280,7 @@ export class TaskModal extends Modal {
 
 		const saveBtn = footer.createEl('button', {
 			cls: 'mod-cta',
-			text: this.isNew ? 'Create Task' : 'Save Changes',
+			text: this.isNew ? 'Create task' : 'Save changes',
 		});
 		saveBtn.onclick = async () => {
 			await this.saveTask();
@@ -369,7 +369,7 @@ export class TaskModal extends Modal {
 		// Add entry button
 		const addBtn = container.createEl('button', {
 			cls: 'gantt-add-history-btn',
-			text: '+ Add History Transition',
+			text: '+ add history transition',
 		});
 		addBtn.onclick = () => {
 			const initialStatus = this.plugin.settings.statuses[1]?.name || 'dev';
@@ -449,7 +449,7 @@ export class TaskModal extends Modal {
 			const { frontmatter } = TaskParser.splitFrontmatter(rawContent);
 
 			// Merge updated frontmatter fields
-			const updatedFm: Record<string, any> = {
+			const updatedFm: Record<string, unknown> = {
 				...frontmatter,
 				start: startDateStr || undefined,
 				end: endDateStr || undefined,
@@ -481,8 +481,10 @@ export class TaskModal extends Modal {
 					for (const item of val) {
 						yaml += `  - ${item}\n`;
 					}
+				} else if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') {
+					yaml += `${key}: ${String(val)}\n`;
 				} else {
-					yaml += `${key}: ${val}\n`;
+					yaml += `${key}: ${JSON.stringify(val)}\n`;
 				}
 			}
 			yaml += '---\n';

@@ -1,15 +1,12 @@
 import { Menu, setIcon } from 'obsidian';
 import type GanttPlugin from '../../main';
 import { TaskParser } from '../../parser/TaskParser';
-import { FolderTreeNode, GanttScale, Task, TreeRenderItem } from '../../types';
+import { GanttScale, Task, TreeRenderItem } from '../../types';
 import {
 	addDays,
 	diffInDays,
 	formatDate,
-	formatDisplayDate,
-	formatShortDate,
 	generateTimelineColumns,
-	isSameDay,
 	startOfDay,
 	TimelineColumn,
 	TimelineHeaderGroup,
@@ -60,11 +57,11 @@ export class GanttChartComponent {
 
 		if (this.tasks.length === 0) {
 			const empty = this.containerEl.createDiv({ cls: 'gantt-empty-state' });
-			empty.createEl('div', { cls: 'gantt-empty-title', text: 'No tasks found' });
+			empty.createDiv({ cls: 'gantt-empty-title', text: 'No tasks found' });
 			empty.createEl('p', {
-				text: 'Create a new task with start/end dates and # History, or adjust your folder filters.',
+				text: 'Create a new task with start/end dates and # history, or adjust your folder filters.',
 			});
-			const newBtn = empty.createEl('button', { cls: 'mod-cta', text: '+ Create New Task' });
+			const newBtn = empty.createEl('button', { cls: 'mod-cta', text: '+ create new task' });
 			newBtn.onclick = () => new TaskModal(this.plugin.app, this.plugin).open();
 			return;
 		}
@@ -86,11 +83,11 @@ export class GanttChartComponent {
 		const renderItems: TreeRenderItem[] = this.groupByFolder
 			? TaskParser.flattenVisibleTree(treeNodes, this.collapsedFolders)
 			: this.tasks.map((t) => ({
-					type: 'task',
+					type: 'task' as const,
 					task: t,
 					id: t.id,
 					level: 0,
-					folderNode: null as any,
+					folderNode: undefined,
 			  }));
 
 		// Layout: Split Left Table + Right Timeline
@@ -108,7 +105,7 @@ export class GanttChartComponent {
 		this.syncScroll();
 
 		// Auto-scroll horizontal timeline to Today
-		requestAnimationFrame(() => {
+		window.requestAnimationFrame(() => {
 			this.scrollToToday();
 		});
 	}
@@ -252,10 +249,10 @@ export class GanttChartComponent {
 				titleLink.onclick = (e) => {
 					e.preventDefault();
 					e.stopPropagation();
-					this.plugin.app.workspace.getLeaf(false).openFile(task.file);
+					void this.plugin.app.workspace.getLeaf(false).openFile(task.file);
 				};
 
-				const editIcon = titleCell.createSpan({ cls: 'gantt-edit-task-icon', title: 'Edit Task' });
+				const editIcon = titleCell.createSpan({ cls: 'gantt-edit-task-icon', title: 'Edit task' });
 				setIcon(editIcon, 'pencil');
 				editIcon.onclick = (e) => {
 					e.stopPropagation();
@@ -283,7 +280,7 @@ export class GanttChartComponent {
 					if (this.plugin.settings.clickAction === 'edit-modal') {
 						new TaskModal(this.plugin.app, this.plugin, task).open();
 					} else {
-						this.plugin.app.workspace.getLeaf(false).openFile(task.file);
+						void this.plugin.app.workspace.getLeaf(false).openFile(task.file);
 					}
 				};
 
@@ -452,7 +449,9 @@ export class GanttChartComponent {
 				item
 					.setTitle('Abrir nota')
 					.setIcon('file-text')
-					.onClick(() => this.plugin.app.workspace.getLeaf(false).openFile(task.file))
+					.onClick(() => {
+						void this.plugin.app.workspace.getLeaf(false).openFile(task.file);
+					})
 			);
 			menu.addItem((item) =>
 				item
@@ -562,7 +561,7 @@ export class GanttChartComponent {
 			}
 		};
 
-		const onMouseUp = async (e: MouseEvent) => {
+		const onMouseUp = (e: MouseEvent) => {
 			window.removeEventListener('mousemove', onMouseMove);
 			window.removeEventListener('mouseup', onMouseUp);
 			barEl.removeClass('is-moving');
@@ -571,13 +570,13 @@ export class GanttChartComponent {
 			if (!dragType) return;
 
 			if (hasMoved) {
-				await this.plugin.taskManager.updateTaskDates(task, currentStart, currentEnd);
+				void this.plugin.taskManager.updateTaskDates(task, currentStart, currentEnd);
 			} else if (dragType === 'move') {
 				// Clean click without drag -> Open note in Obsidian workspace
 				if (this.plugin.settings.clickAction === 'edit-modal') {
 					new TaskModal(this.plugin.app, this.plugin, task).open();
 				} else {
-					this.plugin.app.workspace.getLeaf(false).openFile(task.file);
+					void this.plugin.app.workspace.getLeaf(false).openFile(task.file);
 				}
 			}
 
@@ -717,7 +716,7 @@ export class GanttChartComponent {
 			this.removeAllTooltips();
 
 			const tooltip = document.body.createDiv({ cls: 'gantt-custom-tooltip' });
-			tooltip.createEl('div', { cls: 'gantt-tooltip-title', text: task.title });
+			tooltip.createDiv({ cls: 'gantt-tooltip-title', text: task.title });
 
 			const metaRow = tooltip.createDiv({ cls: 'gantt-tooltip-meta' });
 			metaRow.createSpan({ text: `📁 Projeto: ${task.project}` });

@@ -12,7 +12,7 @@ export class StatusPickerModal extends FuzzySuggestModal<StatusConfig> {
 		this.plugin = plugin;
 		this.task = task;
 		this.onChoose = onChoose || ((status) => {
-			this.plugin.taskManager.updateTaskStatus(this.task, status.id);
+			void this.plugin.taskManager.updateTaskStatus(this.task, status.id);
 		});
 		this.setPlaceholder(`Select new status for "${task.title}" (current: ${task.status})`);
 	}

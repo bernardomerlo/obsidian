@@ -120,12 +120,12 @@ export class KanbanViewComponent {
 		});
 		titleLink.onclick = (e) => {
 			e.preventDefault();
-			this.plugin.app.workspace.getLeaf(false).openFile(task.file);
+			void this.plugin.app.workspace.getLeaf(false).openFile(task.file);
 		};
 
 		const editBtn = cardHeader.createEl('button', {
 			cls: 'gantt-card-icon-btn',
-			title: 'Edit Task',
+			title: 'Edit task',
 		});
 		setIcon(editBtn, 'pencil');
 		editBtn.onclick = (e) => {

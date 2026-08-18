@@ -330,7 +330,7 @@ export class TaskManager {
 		await this.reloadFile(task.file);
 	}
 
-	async updateTaskMetadata(task: Task, updates: Record<string, any>): Promise<void> {
+	async updateTaskMetadata(task: Task, updates: Record<string, unknown>): Promise<void> {
 		const rawContent = await this.app.vault.read(task.file);
 		const updatedContent = TaskParser.updateFrontmatter(rawContent, updates);
 		await this.app.vault.modify(task.file, updatedContent);
@@ -353,7 +353,7 @@ export class TaskManager {
 	}
 
 	async deleteTask(task: Task): Promise<void> {
-		await this.app.vault.trash(task.file, true);
+		await this.app.fileManager.trashFile(task.file);
 		this.tasks.delete(task.file.path);
 		this.notifyListeners();
 		new Notice(`Deleted task: ${task.title}`);

@@ -36,14 +36,12 @@ export class GanttSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		containerEl.createEl('h2', { text: 'Life Manager Settings' });
-
 		new Setting(containerEl)
 			.setName('Task folder')
 			.setDesc('Only scan tasks within this folder. Leave empty to scan the entire vault.')
 			.addText((text) =>
 				text
-					.setPlaceholder('e.g., Projects or Tasks')
+					.setPlaceholder('E.g., projects or tasks')
 					.setValue(this.plugin.settings.taskFolder)
 					.onChange(async (value) => {
 						this.plugin.settings.taskFolder = value.trim();
@@ -52,7 +50,7 @@ export class GanttSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName('Group tasks by folder (Projects)')
+			.setName('Group tasks by folder (projects)')
 			.setDesc('Create horizontal subdivisions for each subfolder inside the search folder.')
 			.addToggle((toggle) =>
 				toggle
@@ -79,12 +77,12 @@ export class GanttSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('History date format')
-			.setDesc('Format used when recording new status entries in # History.')
+			.setDesc('Format used when recording new status entries in # history.')
 			.addDropdown((dropdown) =>
 				dropdown
-					.addOption('DD-MM-YYYY', 'DD-MM-YYYY (e.g. 01-08-2026)')
-					.addOption('YYYY-MM-DD', 'YYYY-MM-DD (e.g. 2026-08-01)')
-					.addOption('MM-DD-YYYY', 'MM-DD-YYYY (e.g. 08-01-2026)')
+					.addOption('DD-MM-YYYY', 'Dd-mm-yyyy (e.g. 01-08-2026)')
+					.addOption('YYYY-MM-DD', 'Yyyy-mm-dd (e.g. 2026-08-01)')
+					.addOption('MM-DD-YYYY', 'Mm-dd-yyyy (e.g. 08-01-2026)')
 					.setValue(this.plugin.settings.dateFormat)
 					.onChange(async (value: string) => {
 						this.plugin.settings.dateFormat = value as 'DD-MM-YYYY' | 'YYYY-MM-DD' | 'MM-DD-YYYY';
@@ -94,7 +92,7 @@ export class GanttSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Use daily note wikilinks in history')
-			.setDesc('Wrap dates in [[...]] in # History (e.g., - [[01-08-2026]] - dev).')
+			.setDesc('Wrap dates in [[...]] in # history (e.g., - [[01-08-2026]] - dev).')
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.useWikilinksInHistory)
@@ -106,24 +104,24 @@ export class GanttSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Default view')
-			.setDesc('Initial view mode when opening the Life Manager workspace.')
+			.setDesc('Initial view mode when opening the life manager workspace.')
 			.addDropdown((dropdown) =>
 				dropdown
-					.addOption('gantt', 'Gantt Chart')
-					.addOption('table', 'Table View')
-					.addOption('kanban', 'Kanban Board')
-					.addOption('calendar', 'Calendar View')
-					.addOption('analytics', 'History & Flow Analytics')
+					.addOption('gantt', 'Gantt chart')
+					.addOption('table', 'Table view')
+					.addOption('kanban', 'Kanban board')
+					.addOption('calendar', 'Calendar view')
+					.addOption('analytics', 'History & flow analytics')
 					.setValue(this.plugin.settings.defaultView)
-					.onChange(async (value: any) => {
-						this.plugin.settings.defaultView = value;
+					.onChange(async (value: string) => {
+						this.plugin.settings.defaultView = value as GanttSettings['defaultView'];
 						await this.plugin.saveSettings();
 					})
 			);
 
 		new Setting(containerEl)
-			.setName('Default Gantt scale')
-			.setDesc('Default zoom scale on the Gantt timeline.')
+			.setName('Default gantt scale')
+			.setDesc('Default zoom scale on the gantt timeline.')
 			.addDropdown((dropdown) =>
 				dropdown
 					.addOption('day', 'Day')
@@ -132,15 +130,15 @@ export class GanttSettingTab extends PluginSettingTab {
 					.addOption('quarter', 'Quarter')
 					.addOption('year', 'Year')
 					.setValue(this.plugin.settings.defaultScale)
-					.onChange(async (value: any) => {
-						this.plugin.settings.defaultScale = value;
+					.onChange(async (value: string) => {
+						this.plugin.settings.defaultScale = value as GanttSettings['defaultScale'];
 						await this.plugin.saveSettings();
 					})
 			);
 
 		new Setting(containerEl)
-			.setName('Show history segments on Gantt by default')
-			.setDesc('Render multi-colored bars representing each status interval from # History.')
+			.setName('Show history segments on gantt by default')
+			.setDesc('Render multi-colored bars representing each status interval from # history.')
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.showHistorySegmentsByDefault)
@@ -162,7 +160,7 @@ export class GanttSettingTab extends PluginSettingTab {
 					})
 			);
 
-		containerEl.createEl('h3', { text: 'Configured Statuses' });
+		new Setting(containerEl).setName('Configured statuses').setHeading();
 		const statusListEl = containerEl.createDiv({ cls: 'gantt-settings-status-list' });
 		this.renderStatusSettings(statusListEl);
 	}
@@ -170,11 +168,11 @@ export class GanttSettingTab extends PluginSettingTab {
 	private renderStatusSettings(container: HTMLElement): void {
 		container.empty();
 		this.plugin.settings.statuses.forEach((status, idx) => {
-			const row = new Setting(container)
+			new Setting(container)
 				.setName(status.name)
 				.addText((text) =>
 					text
-						.setPlaceholder('Status ID/Name')
+						.setPlaceholder('Status ID/name')
 						.setValue(status.name)
 						.onChange(async (val) => {
 							status.name = val;
@@ -192,7 +190,7 @@ export class GanttSettingTab extends PluginSettingTab {
 				)
 				.addToggle((toggle) =>
 					toggle
-						.setTooltip('Marks task as Done/Completed')
+						.setTooltip('Marks task as done/completed')
 						.setValue(!!status.isDone)
 						.onChange(async (val) => {
 							status.isDone = val;
@@ -214,7 +212,7 @@ export class GanttSettingTab extends PluginSettingTab {
 		new Setting(container)
 			.addButton((btn) =>
 				btn
-					.setButtonText('+ Add Status')
+					.setButtonText('+ add status')
 					.onClick(async () => {
 						this.plugin.settings.statuses.push({
 							id: `status-${Date.now()}`,
