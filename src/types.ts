@@ -35,7 +35,6 @@ export interface Task {
 	formattedStart: string;
 	formattedEnd: string;
 	status: string;
-	assignee: string;
 	tags: string[];
 	priority: 'low' | 'normal' | 'high' | 'urgent' | string;
 	progress: number; // 0 to 100
@@ -131,7 +130,6 @@ export interface GanttSettings {
 export interface FilterOptions {
 	searchQuery: string;
 	selectedStatuses: string[];
-	selectedAssignees: string[];
 	selectedTags: string[];
 	folder: string;
 	dateFrom: Date | null;
@@ -173,7 +171,6 @@ export interface CodeblockConfig {
 	tags?: string[];
 	status?: string;
 	statuses?: string[];
-	assignee?: string;
 	view?: ViewType;
 	scale?: GanttScale;
 	showSegments?: boolean;

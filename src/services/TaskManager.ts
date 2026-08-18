@@ -174,7 +174,6 @@ export class TaskManager {
 				const q = filters.searchQuery.toLowerCase();
 				const matches =
 					task.title.toLowerCase().includes(q) ||
-					task.assignee.toLowerCase().includes(q) ||
 					task.status.toLowerCase().includes(q) ||
 					task.tags.some((t) => t.toLowerCase().includes(q)) ||
 					task.bodyContent.toLowerCase().includes(q);
@@ -186,10 +185,6 @@ export class TaskManager {
 					(s) => s.toLowerCase() === task.status.toLowerCase()
 				);
 				if (!match) return false;
-			}
-
-			if (filters.selectedAssignees && filters.selectedAssignees.length > 0) {
-				if (!filters.selectedAssignees.includes(task.assignee)) return false;
 			}
 
 			if (filters.selectedTags && filters.selectedTags.length > 0) {
@@ -220,7 +215,6 @@ export class TaskManager {
 		startDate?: Date | null;
 		endDate?: Date | null;
 		status?: string;
-		assignee?: string;
 		tags?: string[];
 		priority?: string;
 		body?: string;
@@ -270,7 +264,6 @@ export class TaskManager {
 			startDate: startDateStr,
 			endDate: endDateStr,
 			status: data.status || 'todo',
-			assignee: data.assignee,
 			tags: data.tags,
 			priority: data.priority,
 			body: data.body,

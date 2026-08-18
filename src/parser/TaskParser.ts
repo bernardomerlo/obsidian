@@ -23,7 +23,6 @@ export class TaskParser {
 		}
 		if (!status) status = 'todo';
 
-		const assignee = String(frontmatter['assignee'] || frontmatter['assigned'] || '').trim();
 		const priority = (String(frontmatter['priority'] || 'normal').toLowerCase()) as any;
 		
 		let tags: string[] = [];
@@ -106,7 +105,6 @@ export class TaskParser {
 			formattedStart: startDate ? formatDate(startDate, 'DD-MM-YYYY') : '',
 			formattedEnd: endDate ? formatDate(endDate, 'DD-MM-YYYY') : '',
 			status,
-			assignee,
 			tags,
 			priority,
 			progress,
@@ -472,7 +470,6 @@ export class TaskParser {
 		startDate?: string;
 		endDate?: string;
 		status?: string;
-		assignee?: string;
 		tags?: string[];
 		priority?: string;
 		body?: string;
@@ -517,7 +514,6 @@ export class TaskParser {
 			}
 		}
 
-		if (data.assignee) yaml += `assignee: ${data.assignee}\n`;
 		if (data.priority && data.priority !== 'normal') yaml += `priority: ${data.priority}\n`;
 		if (data.tags && data.tags.length > 0) {
 			yaml += 'tags:\n';

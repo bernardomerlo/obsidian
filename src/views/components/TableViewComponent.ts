@@ -58,7 +58,6 @@ export class TableViewComponent {
 
 		this.createHeaderCell(headerRow, 'Project / Task', 'title');
 		this.createHeaderCell(headerRow, 'Status', 'status');
-		this.createHeaderCell(headerRow, 'Assignee', 'assignee');
 		this.createHeaderCell(headerRow, 'Start Date', 'start');
 		this.createHeaderCell(headerRow, 'End Date', 'end');
 		this.createHeaderCell(headerRow, 'Duration', 'duration');
@@ -79,10 +78,10 @@ export class TableViewComponent {
 				});
 				groupRow.style.setProperty('--folder-color', folderColor);
 				const groupCell = groupRow.createEl('td', {
-					attr: { colspan: '9' },
+					attr: { colspan: '8' },
 					cls: 'gantt-table-group-cell',
 				});
-				groupCell.style.paddingLeft = `${8 + item.level * 16}px`;
+				groupCell.style.paddingLeft = `${4 + item.level * 16}px`;
 
 				const toggleIcon = groupCell.createSpan({ cls: 'gantt-group-toggle-icon' });
 				setIcon(toggleIcon, isCollapsed ? 'chevron-right' : 'chevron-down');
@@ -117,7 +116,7 @@ export class TableViewComponent {
 
 				// Title
 				const titleCell = row.createEl('td', { cls: 'gantt-table-title-cell' });
-				titleCell.style.paddingLeft = `${16 + item.level * 16}px`;
+				titleCell.style.paddingLeft = `${28 + item.level * 16}px`;
 
 				const link = titleCell.createEl('a', {
 					cls: 'gantt-task-link',
@@ -135,14 +134,6 @@ export class TableViewComponent {
 					e.stopPropagation();
 					new StatusPickerModal(this.plugin.app, this.plugin, task).open();
 				};
-
-				// Assignee
-				const assigneeCell = row.createEl('td');
-				if (task.assignee) {
-					assigneeCell.createSpan({ cls: 'gantt-assignee-tag', text: task.assignee });
-				} else {
-					assigneeCell.createSpan({ cls: 'gantt-text-muted', text: '-' });
-				}
 
 				// Start Date
 				const startCell = row.createEl('td');
@@ -264,10 +255,6 @@ export class TableViewComponent {
 				case 'status':
 					valA = a.status.toLowerCase();
 					valB = b.status.toLowerCase();
-					break;
-				case 'assignee':
-					valA = a.assignee.toLowerCase();
-					valB = b.assignee.toLowerCase();
 					break;
 				case 'start':
 					valA = a.startDate?.getTime() || 0;

@@ -18,7 +18,6 @@ export class GanttView extends ItemView {
 	filters: FilterOptions = {
 		searchQuery: '',
 		selectedStatuses: [],
-		selectedAssignees: [],
 		selectedTags: [],
 		folder: '',
 		dateFrom: null,

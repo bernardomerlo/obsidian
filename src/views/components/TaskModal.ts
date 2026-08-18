@@ -25,7 +25,6 @@ export class TaskModal extends Modal {
 	private startDate: Date | null = null;
 	private endDate: Date | null = null;
 	private status: string = 'todo';
-	private assignee: string = '';
 	private tags: string[] = [];
 	private link: string[] = [];
 	private tarefa: string[] = [];
@@ -48,7 +47,6 @@ export class TaskModal extends Modal {
 			this.startDate = task.startDate;
 			this.endDate = task.endDate;
 			this.status = task.status;
-			this.assignee = task.assignee;
 			this.tags = [...task.tags];
 			this.link = task.link ? [...task.link] : [];
 			this.tarefa = task.tarefa ? [...task.tarefa] : [];
@@ -232,16 +230,6 @@ export class TaskModal extends Modal {
 				this.endDate = parseDate(val);
 			});
 		});
-
-		// Assignee & Priority
-		new Setting(contentEl).setName('Assignee').addText((text) =>
-			text
-				.setPlaceholder('e.g. Bernardo')
-				.setValue(this.assignee)
-				.onChange((val) => {
-					this.assignee = val;
-				})
-		);
 
 		new Setting(contentEl).setName('Tags').addText((text) =>
 			text
@@ -431,7 +419,6 @@ export class TaskModal extends Modal {
 				startDate: this.startDate,
 				endDate: this.endDate,
 				status: this.status,
-				assignee: this.assignee,
 				tags: this.tags,
 				priority: this.priority,
 				body: this.bodyContent,
@@ -467,7 +454,6 @@ export class TaskModal extends Modal {
 				start: startDateStr || undefined,
 				end: endDateStr || undefined,
 				status: this.status,
-				assignee: this.assignee || undefined,
 				priority: this.priority && this.priority !== 'normal' ? this.priority : undefined,
 				tags: this.tags.length > 0 ? this.tags : undefined,
 			};

@@ -66,9 +66,6 @@ export class CodeblockProcessor {
 			) {
 				return false;
 			}
-			if (config.assignee && task.assignee.toLowerCase() !== config.assignee.toLowerCase()) {
-				return false;
-			}
 			return true;
 		});
 

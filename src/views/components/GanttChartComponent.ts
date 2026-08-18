@@ -203,7 +203,7 @@ export class GanttChartComponent {
 				groupRow.style.setProperty('--folder-color', folderColor);
 
 				const titleCell = groupRow.createDiv({ cls: 'gantt-col-title' });
-				titleCell.style.paddingLeft = `${8 + item.level * 16}px`;
+				titleCell.style.paddingLeft = `${4 + item.level * 16}px`;
 
 				const toggleIcon = titleCell.createSpan({ cls: 'gantt-group-toggle-icon' });
 				setIcon(toggleIcon, isCollapsed ? 'chevron-right' : 'chevron-down');
@@ -243,7 +243,7 @@ export class GanttChartComponent {
 
 				// Task Title Cell
 				const titleCell = row.createDiv({ cls: 'gantt-col-title' });
-				titleCell.style.paddingLeft = `${16 + item.level * 16}px`;
+				titleCell.style.paddingLeft = `${28 + item.level * 16}px`;
 
 				const titleLink = titleCell.createEl('a', {
 					cls: 'gantt-task-link',
@@ -416,7 +416,7 @@ export class GanttChartComponent {
 			title: 'Arraste para alterar data de início',
 		});
 
-		// Inner Content Area (Only Task Title, No Status Name on Timeline Bar)
+		// Inner Content Area (Clean colored segments/flow)
 		const contentArea = barEl.createDiv({ cls: 'gantt-bar-inner-content' });
 
 		const totalBarDays = Math.max(1, diffInDays(span.startDate, span.endDate) + 1);
@@ -427,8 +427,10 @@ export class GanttChartComponent {
 		} else {
 			const statusColor = getStatusColor(task.status, this.plugin.settings.statuses);
 			barEl.style.backgroundColor = statusColor;
-			contentArea.createSpan({ cls: 'gantt-bar-label', text: task.title });
 		}
+
+		// Task Title on the right in front of the bar: [         ] TK-2390
+		barEl.createSpan({ cls: 'gantt-bar-outside-label', text: task.title });
 
 		// Right Resize Handle
 		const rightHandle = barEl.createDiv({
@@ -636,8 +638,6 @@ export class GanttChartComponent {
 			}`;
 			// Note: No status name text inside segment, purely colored flow
 		}
-
-		container.createSpan({ cls: 'gantt-bar-overlay-label', text: task.title });
 	}
 
 	private getPixelsPerDay(): number {
@@ -722,7 +722,6 @@ export class GanttChartComponent {
 			const metaRow = tooltip.createDiv({ cls: 'gantt-tooltip-meta' });
 			metaRow.createSpan({ text: `📁 Projeto: ${task.project}` });
 			metaRow.createSpan({ text: `⚡ Status: ${task.status}` });
-			if (task.assignee) metaRow.createSpan({ text: `👤 Resp: ${task.assignee}` });
 
 			const dateRow = tooltip.createDiv({ cls: 'gantt-tooltip-dates' });
 			dateRow.createSpan({ text: `📅 ${task.formattedStart || '-'} → ${task.formattedEnd || '-'}` });

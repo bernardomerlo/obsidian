@@ -149,11 +149,8 @@ export class KanbanViewComponent {
 			});
 		}
 
-		// Assignee & Tags
+		// Tags
 		const tagRow = card.createDiv({ cls: 'gantt-card-tag-row' });
-		if (task.assignee) {
-			tagRow.createSpan({ cls: 'gantt-assignee-tag', text: task.assignee });
-		}
 		for (const t of task.tags) {
 			createTagPill(tagRow, t);
 		}
