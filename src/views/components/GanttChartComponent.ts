@@ -106,6 +106,21 @@ export class GanttChartComponent {
 
 		// Synchronize vertical scroll
 		this.syncScroll();
+
+		// Auto-scroll horizontal timeline to Today
+		requestAnimationFrame(() => {
+			this.scrollToToday();
+		});
+	}
+
+	public scrollToToday(): void {
+		if (!this.timelineScrollEl) return;
+		const today = startOfDay(new Date());
+		const leftPos = this.calculateLeftPosition(today);
+		const containerWidth = this.timelineScrollEl.clientWidth || 800;
+		// Position Today at roughly 75% of viewport width so active duration is nicely visible
+		const targetScroll = Math.max(0, leftPos - Math.round(containerWidth * 0.75));
+		this.timelineScrollEl.scrollLeft = targetScroll;
 	}
 
 	public removeAllTooltips(): void {
@@ -125,6 +140,10 @@ export class GanttChartComponent {
 			hasDates = true;
 		}
 
+		const today = startOfDay(new Date());
+		if (!hasDates || today < min) min = new Date(today.getTime());
+		if (!hasDates || today > max) max = new Date(today.getTime());
+
 		const paddedMin = addDays(min, -7);
 		const paddedMax = addDays(max, 14);
 
@@ -140,13 +159,25 @@ export class GanttChartComponent {
 			start = sorted[0]?.date || null;
 		}
 
-		if (!end && task.history.length > 0) {
-			const sorted = [...task.history].sort((a, b) => a.date.getTime() - b.date.getTime());
-			end = sorted[sorted.length - 1]?.date || null;
+		const stLower = (task.status || '').toLowerCase();
+		const isDone = stLower === 'done' || stLower === 'completed' || stLower === 'closed' || stLower === 'concluido' || stLower === 'concluído';
+
+		if (!end) {
+			if (isDone) {
+				if (task.history.length > 0) {
+					const sorted = [...task.history].sort((a, b) => a.date.getTime() - b.date.getTime());
+					end = sorted[sorted.length - 1]?.date || start;
+				} else {
+					end = start;
+				}
+			} else {
+				// ACTIVE TASK: Runs all the way to TODAY!
+				end = startOfDay(new Date());
+			}
 		}
 
-		if (!start) start = new Date();
-		if (!end) end = addDays(start, 2);
+		if (!start) start = end || startOfDay(new Date());
+		if (!end) end = start;
 		if (end < start) end = start;
 
 		return { startDate: startOfDay(start), endDate: startOfDay(end) };
@@ -363,8 +394,8 @@ export class GanttChartComponent {
 		const colWidth = this.columns[0]?.width || 36;
 
 		const line = container.createDiv({ cls: 'gantt-today-line' });
-		line.style.left = `${leftPos + colWidth / 2}px`;
-		line.createDiv({ cls: 'gantt-today-line-badge', text: 'Today' });
+		line.style.left = `${leftPos + colWidth}px`;
+		line.createDiv({ cls: 'gantt-today-line-badge', text: 'T' });
 	}
 
 	/**

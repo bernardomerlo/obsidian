@@ -457,22 +457,27 @@
 	top: 0;
 	bottom: 0;
 	width: 2px;
-	background-color: var(--interactive-accent);
-	z-index: 3;
+	background-color: #38bdf8;
+	z-index: 10;
 	pointer-events: none;
+	box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
 }
 
 .gantt-today-line-badge {
 	position: sticky;
-	top: 4px;
-	left: -20px;
-	background-color: var(--interactive-accent);
-	color: var(--text-on-accent);
-	font-size: 10px;
-	font-weight: bold;
-	padding: 2px 6px;
+	top: 2px;
+	left: -8px;
+	background-color: #38bdf8;
+	color: #0f172a;
+	font-size: 11px;
+	font-weight: 800;
+	width: 18px;
+	height: 18px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	border-radius: 4px;
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
 /* Timeline Rows & Task Bars */

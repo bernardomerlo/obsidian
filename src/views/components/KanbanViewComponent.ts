@@ -1,7 +1,7 @@
 import { Menu, setIcon } from 'obsidian';
 import type GanttPlugin from '../../main';
 import { Task } from '../../types';
-import { createTagPill, getStatusColor } from '../../utils/domUtils';
+import { createTagPill, getStatusColor, normalizeStatus } from '../../utils/domUtils';
 import { StatusPickerModal } from './StatusPickerModal';
 import { TaskModal } from './TaskModal';
 
@@ -20,23 +20,46 @@ export class KanbanViewComponent {
 		this.containerEl.empty();
 		this.containerEl.addClass('gantt-kanban-container');
 
-		// Collect unique columns
-		const configuredStatuses = this.plugin.settings.statuses.map((s) => s.id.toLowerCase());
-		const activeStatusesInTasks = Array.from(new Set(this.tasks.map((t) => t.status.toLowerCase())));
+		// Collect unique canonical columns
+		const configuredStatuses = this.plugin.settings.statuses;
+		const defaultNormKeys = configuredStatuses.map((s) => normalizeStatus(s.id));
 		
-		const allColumnKeys = Array.from(new Set([...configuredStatuses, ...activeStatusesInTasks]));
-		if (allColumnKeys.length === 0) {
-			allColumnKeys.push('todo', 'dev', 'hom', 'done');
+		// Ensure standard 4 columns are always present
+		const standardKeys = ['todo', 'dev', 'hom', 'done'];
+		for (const k of standardKeys) {
+			if (!defaultNormKeys.includes(k)) {
+				defaultNormKeys.push(k);
+			}
 		}
+
+		// Also check any non-standard statuses in tasks
+		const taskStatusMap = new Map<string, string>(); // normKey -> rawStatus
+		for (const t of this.tasks) {
+			const norm = normalizeStatus(t.status);
+			if (!defaultNormKeys.includes(norm) && !taskStatusMap.has(norm)) {
+				taskStatusMap.set(norm, t.status);
+			}
+		}
+
+		const allColumnKeys = [...defaultNormKeys, ...Array.from(taskStatusMap.keys())];
 
 		const board = this.containerEl.createDiv({ cls: 'gantt-kanban-board' });
 
 		for (const colKey of allColumnKeys) {
-			const statusObj = this.plugin.settings.statuses.find((s) => s.id.toLowerCase() === colKey);
-			const colTitle = statusObj ? statusObj.name : colKey.toUpperCase();
-			const colColor = getStatusColor(colKey, this.plugin.settings.statuses);
+			const statusObj = this.plugin.settings.statuses.find(
+				(s) => normalizeStatus(s.id) === colKey || normalizeStatus(s.name) === colKey
+			);
+			let colTitle = statusObj ? statusObj.name : '';
+			if (!colTitle) {
+				if (colKey === 'todo') colTitle = 'Todo';
+				else if (colKey === 'dev') colTitle = 'Dev';
+				else if (colKey === 'hom') colTitle = 'Homolog';
+				else if (colKey === 'done') colTitle = 'Done';
+				else colTitle = taskStatusMap.get(colKey) || colKey.toUpperCase();
+			}
 
-			const colTasks = this.tasks.filter((t) => t.status.toLowerCase() === colKey);
+			const colColor = getStatusColor(colKey, this.plugin.settings.statuses);
+			const colTasks = this.tasks.filter((t) => normalizeStatus(t.status) === colKey);
 
 			const columnEl = board.createDiv({ cls: 'gantt-kanban-column' });
 			columnEl.dataset.status = colKey;
@@ -56,7 +79,7 @@ export class KanbanViewComponent {
 			});
 			setIcon(addBtn, 'plus');
 			addBtn.onclick = () => {
-				new TaskModal(this.plugin.app, this.plugin, undefined, { initialStatus: colKey }).open();
+				new TaskModal(this.plugin.app, this.plugin, undefined, { initialStatus: colTitle.toLowerCase() }).open();
 			};
 
 			// Column Cards Body (Drop Zone)

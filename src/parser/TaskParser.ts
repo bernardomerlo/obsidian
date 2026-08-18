@@ -1,7 +1,7 @@
 import { TFile } from 'obsidian';
 import { FolderTreeNode, HistoryEntry, ProjectGroup, StatusSegment, Task, TreeRenderItem } from '../types';
 import { diffInDays, formatDate, formatDisplayDate, parseDate, startOfDay } from '../utils/dateUtils';
-import { getStatusColor } from '../utils/domUtils';
+import { getStatusColor, normalizeStatus } from '../utils/domUtils';
 
 export class TaskParser {
 	/**
@@ -40,8 +40,8 @@ export class TaskParser {
 		if (frontmatter['progress'] !== undefined) {
 			progress = parseInt(String(frontmatter['progress']), 10) || 0;
 		} else {
-			const stLower = status.toLowerCase();
-			if (stLower === 'done' || stLower === 'completed' || stLower === 'closed') {
+			const stLower = normalizeStatus(status);
+			if (stLower === 'done') {
 				progress = 100;
 			}
 		}
@@ -56,15 +56,21 @@ export class TaskParser {
 		const segments = this.buildStatusSegments(historyEntries, startDate, endDate, status);
 		const reworkCount = this.calculateReworkCount(historyEntries);
 
-		const firstDate = historyEntries[0]?.date || startDate || new Date(file.stat.ctime);
-		const lastDate = (status.toLowerCase() === 'done' ? (historyEntries[historyEntries.length - 1]?.date || endDate || new Date()) : new Date());
-		const totalLeadTimeDays = Math.max(0, diffInDays(firstDate, lastDate));
+		const stLower = normalizeStatus(status);
+		const isDone = stLower === 'done';
+		const today = startOfDay(new Date());
+
+		const firstDate = (historyEntries.length > 0 && historyEntries[0] ? historyEntries[0].date : null) || startDate || new Date(file.stat.ctime);
+		const lastDate = isDone 
+			? (endDate || (historyEntries.length > 0 && historyEntries[historyEntries.length - 1] ? historyEntries[historyEntries.length - 1]!.date : null) || today)
+			: today;
+		const totalLeadTimeDays = Math.max(1, diffInDays(firstDate, lastDate) + 1);
 
 		let currentStatusDays = 0;
 		if (historyEntries.length > 0) {
 			const lastEntry = historyEntries[historyEntries.length - 1];
 			if (lastEntry) {
-				currentStatusDays = Math.max(0, diffInDays(lastEntry.date, new Date()));
+				currentStatusDays = Math.max(1, diffInDays(lastEntry.date, today) + (isDone ? 0 : 1));
 			}
 		}
 
@@ -240,9 +246,18 @@ export class TaskParser {
 		endDate: Date | null,
 		currentStatus: string
 	): StatusSegment[] {
+		const stLower = normalizeStatus(currentStatus);
+		const isDone = stLower === 'done';
+		const today = startOfDay(new Date());
+
+		const effectiveStart = startDate ? startOfDay(startDate) : (history.length > 0 && history[0] ? history[0].date : today);
+		const effectiveEnd = endDate 
+			? startOfDay(endDate) 
+			: (isDone ? (history.length > 0 && history[history.length - 1] ? history[history.length - 1]!.date : effectiveStart) : today);
+
 		if (history.length === 0) {
-			const start = startDate || new Date();
-			const end = endDate || (startDate ? startDate : new Date());
+			const start = effectiveStart;
+			const end = effectiveEnd >= start ? effectiveEnd : start;
 			return [
 				{
 					status: currentStatus,
@@ -263,9 +278,6 @@ export class TaskParser {
 		const segments: StatusSegment[] = [];
 		const seenStatuses = new Set<string>();
 
-		const effectiveStart = startDate ? startOfDay(startDate) : sorted[0]!.date;
-		const effectiveEnd = endDate ? startOfDay(endDate) : sorted[sorted.length - 1]!.date;
-
 		for (let i = 0; i < sorted.length; i++) {
 			const entry = sorted[i]!;
 			const nextEntry = sorted[i + 1];
@@ -279,25 +291,25 @@ export class TaskParser {
 				segEnd = effectiveEnd >= segStart ? effectiveEnd : segStart;
 			}
 
-			const normalizedStatus = entry.status.toLowerCase();
-			const isRework = seenStatuses.has(normalizedStatus) && normalizedStatus !== 'done' && normalizedStatus !== 'completed';
+			const normalizedStatus = normalizeStatus(entry.status);
+			const isRework = seenStatuses.has(normalizedStatus) && normalizedStatus !== 'done';
 			seenStatuses.add(normalizedStatus);
 
-			const duration = Math.max(0, diffInDays(segStart, segEnd) + (nextEntry ? 0 : 1));
+			const duration = nextEntry 
+				? Math.max(1, diffInDays(segStart, segEnd))
+				: Math.max(1, diffInDays(segStart, segEnd) + 1);
 
-			if (duration > 0 || i === sorted.length - 1) {
-				segments.push({
-					status: entry.status,
-					startDate: segStart,
-					endDate: segEnd,
-					formattedStart: formatDate(segStart, 'DD-MM-YYYY'),
-					formattedEnd: formatDate(segEnd, 'DD-MM-YYYY'),
-					durationDays: Math.max(1, duration),
-					isCurrent: i === sorted.length - 1,
-					isRework,
-					color: getStatusColor(entry.status),
-				});
-			}
+			segments.push({
+				status: entry.status,
+				startDate: segStart,
+				endDate: segEnd,
+				formattedStart: formatDate(segStart, 'DD-MM-YYYY'),
+				formattedEnd: formatDate(segEnd, 'DD-MM-YYYY'),
+				durationDays: duration,
+				isCurrent: i === sorted.length - 1,
+				isRework,
+				color: getStatusColor(entry.status),
+			});
 		}
 
 		return segments;
@@ -549,15 +561,26 @@ export class TaskParser {
 
 			for (const t of groupTasks) {
 				const start = t.startDate || (t.history[0]?.date) || null;
-				const end = t.endDate || (t.history[t.history.length - 1]?.date) || start;
+				const stLower = normalizeStatus(t.status);
+				const isDone = stLower === 'done';
+				const today = startOfDay(new Date());
+
+				let end = t.endDate;
+				if (!end) {
+					if (isDone) {
+						end = t.history.length > 0 && t.history[t.history.length - 1] ? t.history[t.history.length - 1]!.date : start;
+					} else {
+						end = today;
+					}
+				}
+
 				if (start) {
 					if (!minStart || start < minStart) minStart = start;
 				}
 				if (end) {
 					if (!maxEnd || end > maxEnd) maxEnd = end;
 				}
-				const st = t.status.toLowerCase();
-				if (st === 'done' || st === 'completed' || st === 'closed') {
+				if (isDone) {
 					completed++;
 				}
 			}
@@ -729,15 +752,26 @@ export class TaskParser {
 
 			for (const t of node.allTasks) {
 				const start = t.startDate || (t.history[0]?.date) || null;
-				const end = t.endDate || (t.history[t.history.length - 1]?.date) || start;
+				const stLower = normalizeStatus(t.status);
+				const isDone = stLower === 'done';
+				const today = startOfDay(new Date());
+
+				let end = t.endDate;
+				if (!end) {
+					if (isDone) {
+						end = t.history.length > 0 && t.history[t.history.length - 1] ? t.history[t.history.length - 1]!.date : start;
+					} else {
+						end = today;
+					}
+				}
+
 				if (start) {
 					if (!minStart || start < minStart) minStart = start;
 				}
 				if (end) {
 					if (!maxEnd || end > maxEnd) maxEnd = end;
 				}
-				const st = t.status.toLowerCase();
-				if (st === 'done' || st === 'completed' || st === 'closed') {
+				if (isDone) {
 					completed++;
 				}
 			}

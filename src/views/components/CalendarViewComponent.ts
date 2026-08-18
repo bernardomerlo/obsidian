@@ -130,9 +130,29 @@ export class CalendarViewComponent {
 
 	private getTasksForDate(d: Date): Task[] {
 		const target = startOfDay(d);
+		const today = startOfDay(new Date());
+
 		return this.tasks.filter((t) => {
-			const start = t.startDate ? startOfDay(t.startDate) : (t.history[0]?.date ? startOfDay(t.history[0].date) : null);
-			const end = t.endDate ? startOfDay(t.endDate) : (t.status.toLowerCase() === 'done' ? (t.history[t.history.length - 1]?.date ? startOfDay(t.history[t.history.length - 1]!.date) : start) : start);
+			const start = t.startDate
+				? startOfDay(t.startDate)
+				: t.history.length > 0 && t.history[0]
+				? startOfDay(t.history[0].date)
+				: null;
+
+			const stLower = (t.status || '').toLowerCase();
+			const isDone = stLower === 'done' || stLower === 'completed' || stLower === 'closed' || stLower === 'concluido' || stLower === 'concluído';
+
+			let end: Date | null = null;
+			if (t.endDate) {
+				end = startOfDay(t.endDate);
+			} else if (isDone) {
+				end = t.history.length > 0 && t.history[t.history.length - 1]
+					? startOfDay(t.history[t.history.length - 1]!.date)
+					: start;
+			} else {
+				// ACTIVE TASK: spans all the way to Today!
+				end = today;
+			}
 
 			if (start && end) {
 				return target >= start && target <= end;

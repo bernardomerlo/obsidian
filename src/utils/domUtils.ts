@@ -1,12 +1,13 @@
 import { StatusConfig } from '../types';
 
 export const DEFAULT_STATUS_COLORS: Record<string, string> = {
-	todo: '#64748b', // Slate
+	todo: '#64748b', // Slate Grey
 	backlog: '#94a3b8',
 	dev: '#3b82f6', // Blue
-	'in-progress': '#0ea5e9', // Sky
-	'in progress': '#0ea5e9',
+	'in-progress': '#3b82f6',
+	'in progress': '#3b82f6',
 	hom: '#eab308', // Amber / Yellow for Staging/Homologation
+	homolog: '#eab308',
 	staging: '#eab308',
 	review: '#a855f7', // Purple
 	qa: '#f97316', // Orange
@@ -15,27 +16,52 @@ export const DEFAULT_STATUS_COLORS: Record<string, string> = {
 	done: '#22c55e', // Green
 	completed: '#22c55e',
 	closed: '#16a34a',
+	concluido: '#22c55e',
+	concluído: '#22c55e',
 	cancelled: '#71717a',
 };
 
+export function normalizeStatus(status: string): string {
+	const s = (status || '').trim().toLowerCase().replace(/[-_\s]/g, '');
+	if (['hom', 'homolog', 'homologacao', 'homologacao', 'staging', 'qa', 'review', 'teste', 'test'].includes(s)) {
+		return 'hom';
+	}
+	if (['dev', 'development', 'desenvolvimento', 'emdesenvolvimento', 'inprogress', 'wip', 'emandamento'].includes(s)) {
+		return 'dev';
+	}
+	if (['todo', 'backlog', 'afazer', 'aberto', 'open'].includes(s)) {
+		return 'todo';
+	}
+	if (['done', 'concluido', 'concluido', 'finalizado', 'completed', 'closed', 'pronto'].includes(s)) {
+		return 'done';
+	}
+	return (status || '').trim().toLowerCase();
+}
+
 export function getStatusColor(statusName: string, customStatuses: StatusConfig[] = []): string {
-	const normalized = (statusName || '').trim().toLowerCase();
+	const raw = (statusName || '').trim().toLowerCase();
+	const normalized = normalizeStatus(raw);
 	
 	// Check custom configured statuses first
-	const custom = customStatuses.find(s => s.id.toLowerCase() === normalized || s.name.toLowerCase() === normalized);
+	const custom = customStatuses.find(
+		(s) => s.id.toLowerCase() === raw || s.name.toLowerCase() === raw || normalizeStatus(s.id) === normalized
+	);
 	if (custom && custom.color) {
 		return custom.color;
 	}
 
 	// Check default map
+	if (DEFAULT_STATUS_COLORS[raw]) {
+		return DEFAULT_STATUS_COLORS[raw]!;
+	}
 	if (DEFAULT_STATUS_COLORS[normalized]) {
 		return DEFAULT_STATUS_COLORS[normalized]!;
 	}
 
 	// Generate deterministic pleasant HSL color based on string hash
 	let hash = 0;
-	for (let i = 0; i < normalized.length; i++) {
-		hash = (hash << 5) - hash + normalized.charCodeAt(i);
+	for (let i = 0; i < raw.length; i++) {
+		hash = (hash << 5) - hash + raw.charCodeAt(i);
 		hash |= 0;
 	}
 	const hue = Math.abs(hash) % 360;
