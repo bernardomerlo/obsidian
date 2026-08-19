@@ -334,7 +334,7 @@
 	flex: 1;
 	display: flex;
 	flex-direction: column;
-	overflow: auto;
+	overflow: hidden; /* No own scrollbar — body is the sole scroller */
 	background-color: var(--background-primary);
 	position: relative;
 }
@@ -343,10 +343,10 @@
 	display: flex;
 	flex-direction: column;
 	height: 54px;
+	flex-shrink: 0;
 	background-color: var(--background-secondary);
 	border-bottom: 1px solid var(--gantt-border-subtle);
-	position: sticky;
-	top: 0;
+	overflow: hidden; /* Clips inner content; scrollLeft controlled by JS */
 	z-index: 5;
 }
 
@@ -408,7 +408,7 @@
 /* Right Body & Grid */
 .gantt-right-body {
 	flex: 1;
-	overflow: auto;
+	overflow: auto; /* THE sole scrollable element — one scrollbar only */
 	position: relative;
 }
 
@@ -1604,7 +1604,7 @@
 	gap: 8px;
 }
 
-.gantt-timeline-row {
+.gantt-modal-history-row {
 	display: flex;
 	align-items: center;
 	gap: 10px;

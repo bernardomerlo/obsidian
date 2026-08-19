@@ -13,9 +13,9 @@ To use Life Manager on any computer (personal, work, etc.) without needing Node.
 1. Install the **Obsidian42 - BRAT** community plugin from **Settings → Community plugins**.
 2. Open the command palette (`Ctrl+P` / `Cmd+P`) and select **BRAT: Add a beta plugin for testing**.
 3. Paste your repository URL:
-   ```
-   https://github.com/bernardomerlo/obsidian
-   ```
+    ```
+    https://github.com/bernardomerlo/obsidian
+    ```
 4. BRAT will automatically download the compiled release files (`main.js`, `manifest.json`, `styles.css`) and enable **Life Manager**.
 5. Whenever a new version tag is pushed to GitHub, BRAT will update the plugin automatically on all your machines!
 
@@ -32,9 +32,10 @@ end: 2026-08-10
 status: Done
 assignee: Bernardo
 tags:
-  - backend
-  - auth
+    - backend
+    - auth
 ---
+
 Everything before # History counts as regular note body content (checklists, notes, links, etc.).
 
 # History
@@ -48,6 +49,7 @@ Everything before # History counts as regular note body content (checklists, not
 ```
 
 ### Key Behaviors:
+
 - **Body Preservation**: Everything between frontmatter and `# History` is treated as a normal note and is never wiped or altered during status updates.
 - **Bi-directional Sync**: Dragging cards on the Kanban board, picking a status from the Table dropdown, or updating dates in the modal automatically updates the frontmatter `status` AND appends `- [[DD-MM-YYYY]] - <new_status>` to `# History`.
 - **Flexible Date Formats**: Supports `DD-MM-YYYY` (e.g. `01-08-2026`), `YYYY-MM-DD` (e.g. `2026-08-01`), and daily note wikilinks `[[01-08-2026]]`.
@@ -57,6 +59,7 @@ Everything before # History counts as regular note body content (checklists, not
 ## 🚀 Features & Views
 
 ### 1. Gantt Timeline View
+
 - **Multi-Status Segmented Bars**: Toggle between a single task bar or segmented bars showing each colored phase (`todo` → `dev` → `hom` → `dev` → `done`) directly on the timeline.
 - **Zoom Scales**: Day, Week, Month, Quarter, Year.
 - **Folder / Project Tree**: Collapsible and expandable hierarchy based on folder structures.
@@ -64,21 +67,25 @@ Everything before # History counts as regular note body content (checklists, not
 - **Today Indicator**: Vertical line with floating current-day badge.
 
 ### 2. Table / Data Grid View
+
 - Interactive table with sortable headers (Title, Status, Assignee, Start, End, Duration, Rework count).
 - Clickable status badges for instant transition logging.
 - Status progression visual breadcrumbs (`todo → dev → hom → done`) with rework indicator pills.
 
 ### 3. Kanban Board View
+
 - Status columns (`todo`, `dev`, `hom`, `done`, etc.).
 - Drag & Drop task cards between columns. Moving a card instantly logs the transition to the note's `# History` with today's date link!
 - Shows active days in current status (`⏳ 4d in dev`).
 
 ### 4. Calendar View
+
 - Monthly grid with task spanning bars.
 - Today highlight and month navigation.
 - Click any date cell to create a task starting on that date.
 
 ### 5. Flow & History Analytics View
+
 - **Executive Metrics**: Total tasks, completed, in-progress, average lead time, total rework counts, rework rate percentage.
 - **Cycle Time Breakdown**: Visual bars displaying average days spent in each stage (`todo`, `dev`, `hom`, `done`).
 - **Rework & Bottleneck Watchlist**: Identifies tasks that were sent backwards (e.g., `hom` → `dev`) to highlight bottlenecks.
@@ -88,7 +95,7 @@ Everything before # History counts as regular note body content (checklists, not
 
 ## 🧩 Embedded Codeblocks
 
-Embed interactive views in any note using ```manager or ```life-manager code blocks:
+Embed interactive views in any note using `manager or `life-manager code blocks:
 
 ````markdown
 ```manager
@@ -122,8 +129,10 @@ npm run build
 ```
 
 To create a new release on GitHub for BRAT to pick up:
+
 ```bash
 git tag 1.0.0
 git push origin 1.0.0
 ```
+
 GitHub Actions will automatically build `main.js`, attach `manifest.json` and `styles.css`, and create the release.

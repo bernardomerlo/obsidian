@@ -7,6 +7,7 @@ import {
 	diffInDays,
 	formatDate,
 	generateTimelineColumns,
+	isSameDay,
 	startOfDay,
 	TimelineColumn,
 	TimelineHeaderGroup,
@@ -33,6 +34,7 @@ export class GanttChartComponent {
 	private timelineScrollEl: HTMLElement | null = null;
 	private tableScrollEl: HTMLElement | null = null;
 	private gridContainerEl: HTMLElement | null = null;
+	private headerWrapEl: HTMLElement | null = null;
 
 	constructor(
 		plugin: GanttPlugin,
@@ -75,6 +77,11 @@ export class GanttChartComponent {
 		this.columns = timelineData.columns;
 		this.groups = timelineData.groups;
 
+		// Ensure this.minDate matches the exact first column date
+		if (this.columns.length > 0 && this.columns[0]) {
+			this.minDate = startOfDay(this.columns[0].date);
+		}
+
 		// Build nested folder hierarchy tree
 		const treeNodes = this.groupByFolder
 			? TaskParser.buildFolderTree(this.tasks, this.plugin.settings.taskFolder)
@@ -113,11 +120,21 @@ export class GanttChartComponent {
 	public scrollToToday(): void {
 		if (!this.timelineScrollEl) return;
 		const today = startOfDay(new Date());
-		const leftPos = this.calculateLeftPosition(today);
+		const todayColIndex = this.columns.findIndex((c) => c.isToday || isSameDay(c.date, today));
+		let leftPos: number;
+
+		if (todayColIndex !== -1) {
+			leftPos = this.columns.slice(0, todayColIndex).reduce((acc, c) => acc + c.width, 0);
+		} else {
+			leftPos = this.calculateLeftPosition(today);
+		}
+
 		const containerWidth = this.timelineScrollEl.clientWidth || 800;
-		// Position Today at roughly 75% of viewport width so active duration is nicely visible
-		const targetScroll = Math.max(0, leftPos - Math.round(containerWidth * 0.75));
+		// Center today in the viewport
+		const targetScroll = Math.max(0, leftPos - Math.round(containerWidth * 0.5));
 		this.timelineScrollEl.scrollLeft = targetScroll;
+		// Sync header to the same position immediately
+		if (this.headerWrapEl) this.headerWrapEl.scrollLeft = targetScroll;
 	}
 
 	public removeAllTooltips(): void {
@@ -294,12 +311,14 @@ export class GanttChartComponent {
 	private renderRightTimeline(container: HTMLElement, renderItems: TreeRenderItem[]): void {
 		const totalWidth = this.columns.reduce((acc, col) => acc + col.width, 0);
 
-		// Header
+		// Header — overflow hidden, width controlled by inner rows + JS scroll sync
 		const headerWrap = container.createDiv({ cls: 'gantt-right-header-wrap' });
-		headerWrap.style.width = `${totalWidth}px`;
+		this.headerWrapEl = headerWrap;
+		// Do NOT set width on headerWrap; it stays 100% of pane and clips via overflow:hidden
 
 		// Group Header Row (Months / Years)
 		const groupRow = headerWrap.createDiv({ cls: 'gantt-header-group-row' });
+		groupRow.style.width = `${totalWidth}px`;
 		for (const g of this.groups) {
 			const spanWidth = this.columns
 				.slice(g.startIndex, g.startIndex + g.span)
@@ -310,6 +329,7 @@ export class GanttChartComponent {
 
 		// Column Header Row (Days / Weeks)
 		const colRow = headerWrap.createDiv({ cls: 'gantt-header-col-row' });
+		colRow.style.width = `${totalWidth}px`;
 		for (const col of this.columns) {
 			const cCell = colRow.createDiv({
 				cls: `gantt-header-col-cell ${col.isToday ? 'is-today' : ''} ${col.isWeekend ? 'is-weekend' : ''}`,
@@ -321,7 +341,7 @@ export class GanttChartComponent {
 			}
 		}
 
-		// Timeline Body
+		// Timeline Body — the ONLY scrollable element in the right pane
 		this.timelineScrollEl = container.createDiv({ cls: 'gantt-right-body' });
 		this.gridContainerEl = this.timelineScrollEl.createDiv({ cls: 'gantt-grid-container' });
 		this.gridContainerEl.style.width = `${totalWidth}px`;
@@ -387,11 +407,22 @@ export class GanttChartComponent {
 
 	private renderTodayLine(container: HTMLElement): void {
 		const today = startOfDay(new Date());
-		const leftPos = this.calculateLeftPosition(today);
-		const colWidth = this.columns[0]?.width || 36;
+		const todayColIndex = this.columns.findIndex((c) => c.isToday || isSameDay(c.date, today));
+		let leftPos: number;
+		const defaultWidth = this.columns[0]?.width || 36;
+		let colWidth = defaultWidth;
+
+		if (todayColIndex !== -1) {
+			leftPos = this.columns.slice(0, todayColIndex).reduce((acc, c) => acc + c.width, 0);
+			colWidth = this.columns[todayColIndex]?.width || defaultWidth;
+		} else {
+			leftPos = this.calculateLeftPosition(today);
+		}
+
+		const centerPos = leftPos + Math.round(colWidth / 2);
 
 		const line = container.createDiv({ cls: 'gantt-today-line' });
-		line.style.left = `${leftPos + colWidth}px`;
+		line.style.left = `${centerPos}px`;
 		line.createDiv({ cls: 'gantt-today-line-badge', text: 'T' });
 	}
 
@@ -650,10 +681,12 @@ export class GanttChartComponent {
 
 	private calculateLeftPosition(date: Date): number {
 		const target = startOfDay(date);
-		const colWidth = this.columns[0]?.width || 36;
+		if (this.columns.length === 0) return 0;
+		const baseDate = startOfDay(this.columns[0]!.date);
+		const colWidth = this.columns[0]!.width || 36;
 
 		if (this.scale === 'day') {
-			const days = diffInDays(this.minDate, target);
+			const days = diffInDays(baseDate, target);
 			return Math.max(0, days * colWidth);
 		} else {
 			let accumulated = 0;
@@ -685,11 +718,13 @@ export class GanttChartComponent {
 	}
 
 	private getDateFromPixelX(pixelX: number): Date {
-		const colWidth = this.columns[0]?.width || 36;
+		if (this.columns.length === 0) return this.minDate;
+		const baseDate = startOfDay(this.columns[0]!.date);
+		const colWidth = this.columns[0]!.width || 36;
 
 		if (this.scale === 'day') {
 			const days = Math.floor(Math.max(0, pixelX) / colWidth);
-			return addDays(this.minDate, days);
+			return addDays(baseDate, days);
 		} else {
 			let accumulated = 0;
 			for (let i = 0; i < this.columns.length; i++) {
@@ -704,7 +739,7 @@ export class GanttChartComponent {
 				}
 				accumulated += col.width;
 			}
-			return this.minDate;
+			return baseDate;
 		}
 	}
 
@@ -778,6 +813,7 @@ export class GanttChartComponent {
 	private syncScroll(): void {
 		const leftEl = this.tableScrollEl;
 		const rightEl = this.timelineScrollEl;
+		const headerEl = this.headerWrapEl;
 		if (!leftEl || !rightEl) return;
 
 		let isSyncingLeft = false;
@@ -797,6 +833,8 @@ export class GanttChartComponent {
 				leftEl.scrollTop = rightEl.scrollTop;
 			}
 			isSyncingRight = false;
+			// Always keep header in perfect sync with body horizontal scroll
+			if (headerEl) headerEl.scrollLeft = rightEl.scrollLeft;
 		});
 	}
 }

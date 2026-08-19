@@ -304,7 +304,7 @@ export class TaskModal extends Modal {
 				const prevItem = i > 0 ? this.history[i - 1] : undefined;
 				const daysSincePrev = prevItem ? diffInDays(prevItem.date, item.date) : 0;
 
-				const row = timeline.createDiv({ cls: 'gantt-timeline-row' });
+				const row = timeline.createDiv({ cls: 'gantt-modal-history-row' });
 
 				// Dot and line
 				const dot = row.createDiv({ cls: 'gantt-timeline-dot' });
