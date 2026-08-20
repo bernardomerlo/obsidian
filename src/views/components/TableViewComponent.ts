@@ -39,15 +39,24 @@ export class TableViewComponent {
 			? TaskParser.buildFolderTree(this.tasks, this.plugin.settings.taskFolder)
 			: [];
 
+		const sorted = this.getSortedTasks(this.tasks);
+		const ordered = TaskParser.orderTasksByBacklogHierarchy(sorted);
 		const renderItems: TreeRenderItem[] = this.plugin.settings.groupByFolder
 			? TaskParser.flattenVisibleTree(treeNodes, this.collapsedFolders)
-			: this.getSortedTasks(this.tasks).map((t) => ({
-					type: 'task' as const,
-					task: t,
-					id: t.id,
-					level: 0,
-					folderNode: undefined,
-			  }));
+			: ordered.map((t) => {
+					const isChild = !!(
+						t.parentBg &&
+						ordered.some((p) => p.title === t.parentBg || (p.child && p.child.includes(t.title)))
+					);
+					return {
+						type: 'task' as const,
+						task: t,
+						id: t.id,
+						level: isChild ? 1 : 0,
+						folderNode: undefined,
+						isChildOfBg: isChild,
+					};
+			  });
 
 		// Table element
 		const table = this.containerEl.createEl('table', { cls: 'gantt-data-table' });
@@ -110,13 +119,18 @@ export class TableViewComponent {
 				};
 			} else {
 				const task = item.task;
+				const isChild = !!item.isChildOfBg;
 				const row = tbody.createEl('tr', {
-					cls: `gantt-table-row level-${item.level}`,
+					cls: `gantt-table-row level-${item.level} ${isChild ? 'is-bg-child' : ''}`,
 				});
 
 				// Title
 				const titleCell = row.createEl('td', { cls: 'gantt-table-title-cell' });
 				titleCell.style.paddingLeft = `${28 + item.level * 16}px`;
+
+				if (isChild) {
+					titleCell.createSpan({ cls: 'gantt-tree-branch-prefix', text: '└─ ' });
+				}
 
 				const link = titleCell.createEl('a', {
 					cls: 'gantt-task-link',

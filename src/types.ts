@@ -41,7 +41,9 @@ export interface Task {
 	dependencies: string[]; // file paths or titles
 	link?: string[];
 	tarefa?: string[];
-	tipo?: 'css' | 'pbi';
+	tipo?: 'bg' | 'css' | 'pbi';
+	child?: string[]; // child tasks (e.g. ['TK-3019'])
+	parentBg?: string; // parent BG task title if this is a TK
 	bodyContent: string;
 	rawContent: string;
 	history: HistoryEntry[];
@@ -83,6 +85,7 @@ export type TreeRenderItem =
 			id: string;
 			level: number;
 			folderNode?: FolderTreeNode;
+			isChildOfBg?: boolean;
 	  };
 
 export interface ProjectGroup {

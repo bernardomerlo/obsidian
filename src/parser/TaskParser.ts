@@ -89,8 +89,44 @@ export class TaskParser {
 			tarefa = [frontmatter['tarefa'].trim()];
 		}
 
-		const isCssType = file.basename.startsWith('CSS-') || tarefa.length > 0;
-		const tipo: 'css' | 'pbi' = isCssType ? 'css' : 'pbi';
+		// Child / Children parsing for BG notes (e.g. child: [[TK-3019]] or -child: [[TK-3019]])
+		const childRaw =
+			frontmatter['child'] ||
+			frontmatter['children'] ||
+			frontmatter['-child'] ||
+			frontmatter['childTask'] ||
+			frontmatter['childTasks'];
+		let child: string[] = [];
+		if (Array.isArray(childRaw)) {
+			child = childRaw.map((c: unknown) => String(c).trim()).filter(Boolean);
+		} else if (typeof childRaw === 'string' && childRaw.trim()) {
+			child = [childRaw.trim()];
+		}
+
+		// Also check if body has inline child field: [child:: [[TK-3019]]] or child:: [[TK-3019]] or - child: [[TK-3019]]
+		if (child.length === 0) {
+			const inlineMatch = bodyContent.match(/(?:\[child::\s*([^\]]+)\]|child::\s*(\S+)|[-*]\s*child:\s*(\S+))/i);
+			if (inlineMatch) {
+				const val = (inlineMatch[1] || inlineMatch[2] || inlineMatch[3] || '').trim();
+				if (val) child = [val];
+			}
+		}
+
+		// Normalize child wikilinks into clean titles/refs
+		const cleanChildList = child
+			.map((c) => {
+				const match = c.match(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/);
+				return match && match[1] ? match[1].trim() : c.replace(/^['"](.*)['"]$/, '$1').trim();
+			})
+			.filter(Boolean);
+
+		const isBgType =
+			file.basename.startsWith('BG-') ||
+			file.basename.startsWith('BG') ||
+			frontmatter['tipo'] === 'bg' ||
+			cleanChildList.length > 0;
+		const isCssType = file.basename.startsWith('CSS-') || tarefa.length > 0 || frontmatter['tipo'] === 'css';
+		const tipo: 'bg' | 'css' | 'pbi' = isBgType ? 'bg' : isCssType ? 'css' : 'pbi';
 
 		const parentFolder = file.parent?.path || '';
 		const folder = parentFolder === '/' ? '' : parentFolder;
@@ -114,6 +150,7 @@ export class TaskParser {
 			link,
 			tarefa,
 			tipo,
+			child: cleanChildList.length > 0 ? cleanChildList : undefined,
 			bodyContent,
 			rawContent,
 			history: historyEntries,
@@ -154,15 +191,30 @@ export class TaskParser {
 				continue;
 			}
 
-			const keyValMatch = line.match(/^([a-zA-Z0-9_-]+):\s*(.*)$/);
+			const keyValMatch = line.match(/^(?:-\s*)?([a-zA-Z0-9_-]+):\s*(.*)$/);
 			if (keyValMatch && keyValMatch[1]) {
-				currentKey = keyValMatch[1].trim();
+				let key = keyValMatch[1].trim();
+				if (key.startsWith('-')) key = key.replace(/^-+/, '');
+				currentKey = key;
 				currentArray = null;
 				const rawVal = (keyValMatch[2] || '').trim();
 				if (rawVal.length > 0) {
-					// Clean quotes
-					const cleaned = rawVal.replace(/^['"](.*)['"]$/, '$1');
-					frontmatter[currentKey] = cleaned;
+					if (rawVal.startsWith('[') && rawVal.endsWith(']')) {
+						const inner = rawVal.slice(1, -1).trim();
+						if (inner) {
+							const items = inner
+								.split(',')
+								.map((s) => s.trim().replace(/^['"](.*)['"]$/, '$1'))
+								.filter(Boolean);
+							frontmatter[currentKey] = items;
+						} else {
+							frontmatter[currentKey] = [];
+						}
+					} else {
+						// Clean quotes
+						const cleaned = rawVal.replace(/^['"](.*)['"]$/, '$1');
+						frontmatter[currentKey] = cleaned;
+					}
 				}
 			}
 		}
@@ -468,7 +520,7 @@ export class TaskParser {
 	 */
 	static createNewTaskTemplate(data: {
 		title: string;
-		tipo?: 'css' | 'pbi';
+		tipo?: 'bg' | 'css' | 'pbi';
 		taskId?: string;
 		projeto?: string;
 		startDate?: string;
@@ -481,6 +533,7 @@ export class TaskParser {
 		useWikilinks?: boolean;
 		link?: string[];
 		tarefa?: string[];
+		child?: string[];
 		includeHistorySection?: boolean;
 	}): string {
 		const status = data.status || 'todo';
@@ -518,6 +571,17 @@ export class TaskParser {
 			}
 		}
 
+		// child field (for BG backlog notes)
+		if (data.tipo === 'bg' || (data.child && data.child.length > 0)) {
+			if (data.child && data.child.length > 0) {
+				yaml += 'child:\n';
+				for (const c of data.child) {
+					const clean = c.replace(/^\[\[(.*)\]\]$/, '$1').trim();
+					yaml += `  - "[[${clean}]]"\n`;
+				}
+			}
+		}
+
 		if (data.priority && data.priority !== 'normal') yaml += `priority: ${data.priority}\n`;
 		if (data.tags && data.tags.length > 0) {
 			yaml += 'tags:\n';
@@ -536,6 +600,31 @@ export class TaskParser {
 		}
 
 		return `${yaml}${body}${history}`;
+	}
+
+	/**
+	 * Finds a matching task given a reference (e.g. '[[TK-3019]]', 'TK-3019', 'folder/TK-3019.md')
+	 */
+	static findTaskByRef(tasks: Task[], ref: string): Task | undefined {
+		if (!ref) return undefined;
+		const clean = ref.replace(/^\[\[(.*)\]\]$/, '$1').trim();
+		const cleanNoAlias = clean.split('|')[0]!.trim();
+		const baseName = (cleanNoAlias.split('/').pop() || '').replace(/\.md$/, '').trim().toLowerCase();
+		const fullPath = cleanNoAlias.replace(/\.md$/, '').trim().toLowerCase();
+
+		return tasks.find((t) => {
+			const tTitle = t.title.toLowerCase();
+			const tBase = t.file.basename.toLowerCase();
+			const tPath = t.file.path.toLowerCase().replace(/\.md$/, '');
+			return (
+				tTitle === baseName ||
+				tBase === baseName ||
+				tPath === fullPath ||
+				tPath.endsWith('/' + baseName) ||
+				(baseName.startsWith('tk-') && tTitle.replace(/^tk-/, '') === baseName.replace(/^tk-/, '')) ||
+				(baseName.startsWith('bg-') && tTitle.replace(/^bg-/, '') === baseName.replace(/^bg-/, ''))
+			);
+		});
 	}
 
 	/**
@@ -796,6 +885,57 @@ export class TaskParser {
 	}
 
 	/**
+	 * Orders tasks so that Backlog (BG) tasks are immediately followed by their child (TK) tasks
+	 */
+	static orderTasksByBacklogHierarchy(tasks: Task[]): Task[] {
+		if (tasks.length <= 1) return tasks;
+
+		const visited = new Set<string>();
+		const ordered: Task[] = [];
+
+		const sortFn = (a: Task, b: Task) => {
+			if (a.startDate && b.startDate) return a.startDate.getTime() - b.startDate.getTime();
+			if (a.startDate) return -1;
+			if (b.startDate) return 1;
+			return a.title.localeCompare(b.title);
+		};
+
+		// Find all BG tasks
+		const bgTasks = tasks.filter(
+			(t) => t.tipo === 'bg' || (t.child && t.child.length > 0) || t.title.startsWith('BG-') || t.title.startsWith('BG')
+		);
+		bgTasks.sort(sortFn);
+
+		for (const bg of bgTasks) {
+			if (!visited.has(bg.id)) {
+				ordered.push(bg);
+				visited.add(bg.id);
+			}
+
+			// Add its child tasks immediately below it
+			if (bg.child && bg.child.length > 0) {
+				const children: Task[] = [];
+				for (const childRef of bg.child) {
+					const childTask = this.findTaskByRef(tasks, childRef);
+					if (childTask && !visited.has(childTask.id)) {
+						children.push(childTask);
+						visited.add(childTask.id);
+					}
+				}
+				children.sort(sortFn);
+				ordered.push(...children);
+			}
+		}
+
+		// Add any remaining standalone tasks
+		const remaining = tasks.filter((t) => !visited.has(t.id));
+		remaining.sort(sortFn);
+		ordered.push(...remaining);
+
+		return ordered;
+	}
+
+	/**
 	 * Flattens the visible nodes of the folder tree into an array of TreeRenderItem
 	 */
 	static flattenVisibleTree(
@@ -821,14 +961,20 @@ export class TaskParser {
 					this.flattenVisibleTree(node.children, collapsedSet, result);
 				}
 
-				// 2. Direct tasks inside this folder
-				for (const task of node.tasks) {
+				// 2. Direct tasks inside this folder (ordered with Backlogs and their child Tasks immediately below)
+				const orderedTasks = this.orderTasksByBacklogHierarchy(node.tasks);
+				for (const task of orderedTasks) {
+					const isChild = !!(
+						task.parentBg &&
+						orderedTasks.some((t) => t.title === task.parentBg || (t.child && t.child.includes(task.title)))
+					);
 					result.push({
 						type: 'task',
 						task,
 						id: task.id,
-						level: node.level + 1,
+						level: node.level + (isChild ? 2 : 1),
 						folderNode: node,
+						isChildOfBg: isChild,
 					});
 				}
 			}

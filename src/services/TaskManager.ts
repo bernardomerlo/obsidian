@@ -108,6 +108,7 @@ export class TaskManager {
 			}
 		}
 
+		this.linkParentChildTasks(newTasks);
 		this.tasks = newTasks;
 		this.notifyListeners();
 	}
@@ -127,13 +128,35 @@ export class TaskManager {
 			if (this.isTaskNote(file, content)) {
 				const task = TaskParser.parse(file, content);
 				this.tasks.set(file.path, task);
+				this.linkParentChildTasks(this.tasks);
 				this.notifyListeners();
 			} else if (this.tasks.has(file.path)) {
 				this.tasks.delete(file.path);
+				this.linkParentChildTasks(this.tasks);
 				this.notifyListeners();
 			}
 		} catch (err) {
 			console.error(`Failed to reload task note: ${file.path}`, err);
+		}
+	}
+
+	private linkParentChildTasks(tasksMap: Map<string, Task>): void {
+		const allTasks = Array.from(tasksMap.values());
+		// Reset parent links
+		for (const t of allTasks) {
+			t.parentBg = undefined;
+		}
+
+		// Link child tasks to parent BG
+		for (const bgTask of allTasks) {
+			if (bgTask.child && bgTask.child.length > 0) {
+				for (const childRef of bgTask.child) {
+					const target = TaskParser.findTaskByRef(allTasks, childRef);
+					if (target && target !== bgTask) {
+						target.parentBg = bgTask.title;
+					}
+				}
+			}
 		}
 	}
 
@@ -145,7 +168,11 @@ export class TaskManager {
 			frontmatter['end'] !== undefined ||
 			frontmatter['startDate'] !== undefined ||
 			frontmatter['endDate'] !== undefined ||
-			frontmatter['assignee'] !== undefined
+			frontmatter['assignee'] !== undefined ||
+			frontmatter['child'] !== undefined ||
+			frontmatter['children'] !== undefined ||
+			frontmatter['-child'] !== undefined ||
+			frontmatter['tipo'] !== undefined
 		) {
 			return true;
 		}
@@ -155,12 +182,7 @@ export class TaskManager {
 	}
 
 	getAllTasks(): Task[] {
-		return Array.from(this.tasks.values()).sort((a, b) => {
-			if (a.startDate && b.startDate) return a.startDate.getTime() - b.startDate.getTime();
-			if (a.startDate) return -1;
-			if (b.startDate) return 1;
-			return a.title.localeCompare(b.title);
-		});
+		return TaskParser.orderTasksByBacklogHierarchy(Array.from(this.tasks.values()));
 	}
 
 	getTaskByPath(path: string): Task | undefined {
@@ -208,7 +230,7 @@ export class TaskManager {
 
 	async createTask(data: {
 		title: string;
-		tipo?: 'css' | 'pbi';
+		tipo?: 'bg' | 'css' | 'pbi';
 		taskId?: string;
 		projeto?: string;
 		folder?: string;
@@ -220,6 +242,7 @@ export class TaskManager {
 		body?: string;
 		link?: string[];
 		tarefa?: string[];
+		child?: string[];
 	}): Promise<TFile> {
 		const folderPath = data.folder || this.settings.taskFolder || '';
 		let targetFolder = this.app.vault.getRoot();
@@ -237,7 +260,9 @@ export class TaskManager {
 		}
 
 		let finalTitle = data.title.trim();
-		if (data.tipo === 'css' && !finalTitle.startsWith('CSS-')) {
+		if (data.tipo === 'bg' && !finalTitle.startsWith('BG-') && !finalTitle.startsWith('BG')) {
+			finalTitle = `BG-${finalTitle}`;
+		} else if (data.tipo === 'css' && !finalTitle.startsWith('CSS-')) {
 			finalTitle = `CSS-${finalTitle}`;
 		}
 
@@ -269,6 +294,7 @@ export class TaskManager {
 			body: data.body,
 			link: data.link,
 			tarefa: data.tarefa,
+			child: data.child,
 			initialHistoryDate: historyDateStr,
 			useWikilinks: this.settings.useWikilinksInHistory,
 		});

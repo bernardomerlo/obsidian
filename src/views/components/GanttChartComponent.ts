@@ -12,7 +12,11 @@ import {
 	TimelineColumn,
 	TimelineHeaderGroup,
 } from '../../utils/dateUtils';
-import { createStatusBadge, getFolderColor, getStatusColor } from '../../utils/domUtils';
+import {
+	createStatusBadge,
+	getFolderColor,
+	getStatusColor,
+} from '../../utils/domUtils';
 import { StatusPickerModal } from './StatusPickerModal';
 import { TaskModal } from './TaskModal';
 
@@ -42,14 +46,20 @@ export class GanttChartComponent {
 		tasks: Task[],
 		scale?: GanttScale,
 		showSegments?: boolean,
-		groupByFolder?: boolean
+		groupByFolder?: boolean,
 	) {
 		this.plugin = plugin;
 		this.containerEl = containerEl;
 		this.tasks = tasks;
 		this.scale = scale || plugin.settings.defaultScale || 'day';
-		this.showSegments = showSegments !== undefined ? showSegments : plugin.settings.showHistorySegmentsByDefault;
-		this.groupByFolder = groupByFolder !== undefined ? groupByFolder : plugin.settings.groupByFolder;
+		this.showSegments =
+			showSegments !== undefined
+				? showSegments
+				: plugin.settings.showHistorySegmentsByDefault;
+		this.groupByFolder =
+			groupByFolder !== undefined
+				? groupByFolder
+				: plugin.settings.groupByFolder;
 	}
 
 	render(): void {
@@ -58,13 +68,22 @@ export class GanttChartComponent {
 		this.containerEl.addClass('gantt-chart-container');
 
 		if (this.tasks.length === 0) {
-			const empty = this.containerEl.createDiv({ cls: 'gantt-empty-state' });
-			empty.createDiv({ cls: 'gantt-empty-title', text: 'No tasks found' });
+			const empty = this.containerEl.createDiv({
+				cls: 'gantt-empty-state',
+			});
+			empty.createDiv({
+				cls: 'gantt-empty-title',
+				text: 'No tasks found',
+			});
 			empty.createEl('p', {
 				text: 'Create a new task with start/end dates and # history, or adjust your folder filters.',
 			});
-			const newBtn = empty.createEl('button', { cls: 'mod-cta', text: '+ create new task' });
-			newBtn.onclick = () => new TaskModal(this.plugin.app, this.plugin).open();
+			const newBtn = empty.createEl('button', {
+				cls: 'mod-cta',
+				text: '+ create new task',
+			});
+			newBtn.onclick = () =>
+				new TaskModal(this.plugin.app, this.plugin).open();
 			return;
 		}
 
@@ -73,7 +92,11 @@ export class GanttChartComponent {
 		this.minDate = range.minDate;
 		this.maxDate = range.maxDate;
 
-		const timelineData = generateTimelineColumns(this.minDate, this.maxDate, this.scale);
+		const timelineData = generateTimelineColumns(
+			this.minDate,
+			this.maxDate,
+			this.scale,
+		);
 		this.columns = timelineData.columns;
 		this.groups = timelineData.groups;
 
@@ -84,21 +107,39 @@ export class GanttChartComponent {
 
 		// Build nested folder hierarchy tree
 		const treeNodes = this.groupByFolder
-			? TaskParser.buildFolderTree(this.tasks, this.plugin.settings.taskFolder)
+			? TaskParser.buildFolderTree(
+					this.tasks,
+					this.plugin.settings.taskFolder,
+				)
 			: [];
 
 		const renderItems: TreeRenderItem[] = this.groupByFolder
 			? TaskParser.flattenVisibleTree(treeNodes, this.collapsedFolders)
-			: this.tasks.map((t) => ({
-					type: 'task' as const,
-					task: t,
-					id: t.id,
-					level: 0,
-					folderNode: undefined,
-			  }));
+			: TaskParser.orderTasksByBacklogHierarchy(this.tasks).map(
+					(t, _, arr) => {
+						const isChild = !!(
+							t.parentBg &&
+							arr.some(
+								(p) =>
+									p.title === t.parentBg ||
+									(p.child && p.child.includes(t.title)),
+							)
+						);
+						return {
+							type: 'task' as const,
+							task: t,
+							id: t.id,
+							level: isChild ? 1 : 0,
+							folderNode: undefined,
+							isChildOfBg: isChild,
+						};
+					},
+				);
 
 		// Layout: Split Left Table + Right Timeline
-		const splitWrapper = this.containerEl.createDiv({ cls: 'gantt-split-wrapper' });
+		const splitWrapper = this.containerEl.createDiv({
+			cls: 'gantt-split-wrapper',
+		});
 
 		// Left Table Pane (Task/Project sidebar with Status)
 		const leftPane = splitWrapper.createDiv({ cls: 'gantt-left-pane' });
@@ -120,26 +161,40 @@ export class GanttChartComponent {
 	public scrollToToday(): void {
 		if (!this.timelineScrollEl) return;
 		const today = startOfDay(new Date());
-		const todayColIndex = this.columns.findIndex((c) => c.isToday || isSameDay(c.date, today));
+		const todayColIndex = this.columns.findIndex(
+			(c) => c.isToday || isSameDay(c.date, today),
+		);
 		let leftPos: number;
 
 		if (todayColIndex !== -1) {
-			leftPos = this.columns.slice(0, todayColIndex).reduce((acc, c) => acc + c.width, 0);
+			leftPos = this.columns
+				.slice(0, todayColIndex)
+				.reduce((acc, c) => acc + c.width, 0);
 		} else {
 			leftPos = this.calculateLeftPosition(today);
 		}
 
 		const containerWidth = this.timelineScrollEl.clientWidth || 800;
 		// Center today in the viewport
-		const targetScroll = Math.max(0, leftPos - Math.round(containerWidth * 0.5));
+		const targetScroll = Math.max(
+			0,
+			leftPos - Math.round(containerWidth * 0.5),
+		);
 		this.timelineScrollEl.scrollLeft = targetScroll;
 		// Sync header to the same position immediately
 		if (this.headerWrapEl) this.headerWrapEl.scrollLeft = targetScroll;
 	}
 
 	public removeAllTooltips(): void {
-		document.querySelectorAll('.gantt-custom-tooltip').forEach((t) => t.remove());
-		document.querySelectorAll('.gantt-drag-floating-tooltip').forEach((t) => t.remove());
+		document
+			.querySelectorAll('.gantt-custom-tooltip')
+			.forEach((t) => t.remove());
+		document
+			.querySelectorAll('.gantt-drag-floating-tooltip')
+			.forEach((t) => t.remove());
+		document
+			.querySelectorAll('.gantt-gitflow-tooltip')
+			.forEach((t) => t.remove());
 	}
 
 	private calculateDateRange(): { minDate: Date; maxDate: Date } {
@@ -149,8 +204,10 @@ export class GanttChartComponent {
 
 		for (const task of this.tasks) {
 			const span = this.getTaskSpan(task);
-			if (!hasDates || span.startDate < min) min = new Date(span.startDate.getTime());
-			if (!hasDates || span.endDate > max) max = new Date(span.endDate.getTime());
+			if (!hasDates || span.startDate < min)
+				min = new Date(span.startDate.getTime());
+			if (!hasDates || span.endDate > max)
+				max = new Date(span.endDate.getTime());
 			hasDates = true;
 		}
 
@@ -161,7 +218,10 @@ export class GanttChartComponent {
 		const paddedMin = addDays(min, -7);
 		const paddedMax = addDays(max, 14);
 
-		return { minDate: startOfDay(paddedMin), maxDate: startOfDay(paddedMax) };
+		return {
+			minDate: startOfDay(paddedMin),
+			maxDate: startOfDay(paddedMax),
+		};
 	}
 
 	public getTaskSpan(task: Task): { startDate: Date; endDate: Date } {
@@ -169,17 +229,26 @@ export class GanttChartComponent {
 		let end = task.endDate;
 
 		if (!start && task.history.length > 0) {
-			const sorted = [...task.history].sort((a, b) => a.date.getTime() - b.date.getTime());
+			const sorted = [...task.history].sort(
+				(a, b) => a.date.getTime() - b.date.getTime(),
+			);
 			start = sorted[0]?.date || null;
 		}
 
 		const stLower = (task.status || '').toLowerCase();
-		const isDone = stLower === 'done' || stLower === 'completed' || stLower === 'closed' || stLower === 'concluido' || stLower === 'concluído';
+		const isDone =
+			stLower === 'done' ||
+			stLower === 'completed' ||
+			stLower === 'closed' ||
+			stLower === 'concluido' ||
+			stLower === 'concluído';
 
 		if (!end) {
 			if (isDone) {
 				if (task.history.length > 0) {
-					const sorted = [...task.history].sort((a, b) => a.date.getTime() - b.date.getTime());
+					const sorted = [...task.history].sort(
+						(a, b) => a.date.getTime() - b.date.getTime(),
+					);
 					end = sorted[sorted.length - 1]?.date || start;
 				} else {
 					end = start;
@@ -197,9 +266,15 @@ export class GanttChartComponent {
 		return { startDate: startOfDay(start), endDate: startOfDay(end) };
 	}
 
-	private renderLeftTable(container: HTMLElement, renderItems: TreeRenderItem[]): void {
+	private renderLeftTable(
+		container: HTMLElement,
+		renderItems: TreeRenderItem[],
+	): void {
 		const tableHeader = container.createDiv({ cls: 'gantt-left-header' });
-		tableHeader.createDiv({ cls: 'gantt-col-title', text: 'Project / Task' });
+		tableHeader.createDiv({
+			cls: 'gantt-col-title',
+			text: 'Project / Task',
+		});
 		tableHeader.createDiv({ cls: 'gantt-col-status', text: 'Status' });
 
 		this.tableScrollEl = container.createDiv({ cls: 'gantt-left-body' });
@@ -216,13 +291,22 @@ export class GanttChartComponent {
 				groupRow.dataset.groupId = item.id;
 				groupRow.style.setProperty('--folder-color', folderColor);
 
-				const titleCell = groupRow.createDiv({ cls: 'gantt-col-title' });
+				const titleCell = groupRow.createDiv({
+					cls: 'gantt-col-title',
+				});
 				titleCell.style.paddingLeft = `${4 + item.level * 16}px`;
 
-				const toggleIcon = titleCell.createSpan({ cls: 'gantt-group-toggle-icon' });
-				setIcon(toggleIcon, isCollapsed ? 'chevron-right' : 'chevron-down');
+				const toggleIcon = titleCell.createSpan({
+					cls: 'gantt-group-toggle-icon',
+				});
+				setIcon(
+					toggleIcon,
+					isCollapsed ? 'chevron-right' : 'chevron-down',
+				);
 
-				const folderIcon = titleCell.createSpan({ cls: 'gantt-group-folder-icon' });
+				const folderIcon = titleCell.createSpan({
+					cls: 'gantt-group-folder-icon',
+				});
 				setIcon(folderIcon, isCollapsed ? 'folder' : 'folder-open');
 				folderIcon.style.color = folderColor;
 
@@ -231,8 +315,12 @@ export class GanttChartComponent {
 					text: node.name,
 				});
 
-				const countBadge = groupRow.createDiv({ cls: 'gantt-group-count-badge' });
-				countBadge.createSpan({ text: `${node.completedCount}/${node.totalCount}` });
+				const countBadge = groupRow.createDiv({
+					cls: 'gantt-group-count-badge',
+				});
+				countBadge.createSpan({
+					text: `${node.completedCount}/${node.totalCount}`,
+				});
 
 				// Empty status placeholder for alignment
 				groupRow.createDiv({ cls: 'gantt-col-status' });
@@ -246,18 +334,28 @@ export class GanttChartComponent {
 					this.render();
 				};
 
-				groupRow.onmouseenter = () => this.highlightGroupRow(item.id, true);
-				groupRow.onmouseleave = () => this.highlightGroupRow(item.id, false);
+				groupRow.onmouseenter = () =>
+					this.highlightGroupRow(item.id, true);
+				groupRow.onmouseleave = () =>
+					this.highlightGroupRow(item.id, false);
 			} else {
 				const task = item.task;
+				const isChild = !!item.isChildOfBg;
 				const row = this.tableScrollEl.createDiv({
-					cls: `gantt-left-row level-${item.level}`,
+					cls: `gantt-left-row level-${item.level} ${isChild ? 'is-bg-child' : ''}`,
 				});
 				row.dataset.taskId = task.id;
 
 				// Task Title Cell
 				const titleCell = row.createDiv({ cls: 'gantt-col-title' });
 				titleCell.style.paddingLeft = `${28 + item.level * 16}px`;
+
+				if (isChild) {
+					titleCell.createSpan({
+						cls: 'gantt-tree-branch-prefix',
+						text: '└─ ',
+					});
+				}
 
 				const titleLink = titleCell.createEl('a', {
 					cls: 'gantt-task-link',
@@ -266,10 +364,15 @@ export class GanttChartComponent {
 				titleLink.onclick = (e) => {
 					e.preventDefault();
 					e.stopPropagation();
-					void this.plugin.app.workspace.getLeaf(false).openFile(task.file);
+					void this.plugin.app.workspace
+						.getLeaf(false)
+						.openFile(task.file);
 				};
 
-				const editIcon = titleCell.createSpan({ cls: 'gantt-edit-task-icon', title: 'Edit task' });
+				const editIcon = titleCell.createSpan({
+					cls: 'gantt-edit-task-icon',
+					title: 'Edit task',
+				});
 				setIcon(editIcon, 'pencil');
 				editIcon.onclick = (e) => {
 					e.stopPropagation();
@@ -278,10 +381,19 @@ export class GanttChartComponent {
 
 				// Status Badge Cell
 				const statusCell = row.createDiv({ cls: 'gantt-col-status' });
-				const badge = createStatusBadge(statusCell, task.status, this.plugin.settings.statuses, true);
+				const badge = createStatusBadge(
+					statusCell,
+					task.status,
+					this.plugin.settings.statuses,
+					true,
+				);
 				badge.onclick = (e) => {
 					e.stopPropagation();
-					new StatusPickerModal(this.plugin.app, this.plugin, task).open();
+					new StatusPickerModal(
+						this.plugin.app,
+						this.plugin,
+						task,
+					).open();
 				};
 
 				// Row click opens note
@@ -289,15 +401,25 @@ export class GanttChartComponent {
 					if (
 						(e.target as HTMLElement).tagName === 'A' ||
 						(e.target as HTMLElement).tagName === 'BUTTON' ||
-						(e.target as HTMLElement).hasClass('gantt-status-badge') ||
-						(e.target as HTMLElement).hasClass('gantt-edit-task-icon')
+						(e.target as HTMLElement).hasClass(
+							'gantt-status-badge',
+						) ||
+						(e.target as HTMLElement).hasClass(
+							'gantt-edit-task-icon',
+						)
 					)
 						return;
 
 					if (this.plugin.settings.clickAction === 'edit-modal') {
-						new TaskModal(this.plugin.app, this.plugin, task).open();
+						new TaskModal(
+							this.plugin.app,
+							this.plugin,
+							task,
+						).open();
 					} else {
-						void this.plugin.app.workspace.getLeaf(false).openFile(task.file);
+						void this.plugin.app.workspace
+							.getLeaf(false)
+							.openFile(task.file);
 					}
 				};
 
@@ -308,22 +430,35 @@ export class GanttChartComponent {
 		}
 	}
 
-	private renderRightTimeline(container: HTMLElement, renderItems: TreeRenderItem[]): void {
-		const totalWidth = this.columns.reduce((acc, col) => acc + col.width, 0);
+	private renderRightTimeline(
+		container: HTMLElement,
+		renderItems: TreeRenderItem[],
+	): void {
+		const totalWidth = this.columns.reduce(
+			(acc, col) => acc + col.width,
+			0,
+		);
 
 		// Header — overflow hidden, width controlled by inner rows + JS scroll sync
-		const headerWrap = container.createDiv({ cls: 'gantt-right-header-wrap' });
+		const headerWrap = container.createDiv({
+			cls: 'gantt-right-header-wrap',
+		});
 		this.headerWrapEl = headerWrap;
 		// Do NOT set width on headerWrap; it stays 100% of pane and clips via overflow:hidden
 
 		// Group Header Row (Months / Years)
-		const groupRow = headerWrap.createDiv({ cls: 'gantt-header-group-row' });
+		const groupRow = headerWrap.createDiv({
+			cls: 'gantt-header-group-row',
+		});
 		groupRow.style.width = `${totalWidth}px`;
 		for (const g of this.groups) {
 			const spanWidth = this.columns
 				.slice(g.startIndex, g.startIndex + g.span)
 				.reduce((a, c) => a + c.width, 0);
-			const gCell = groupRow.createDiv({ cls: 'gantt-header-group-cell', text: g.label });
+			const gCell = groupRow.createDiv({
+				cls: 'gantt-header-group-cell',
+				text: g.label,
+			});
 			gCell.style.width = `${spanWidth}px`;
 		}
 
@@ -335,15 +470,25 @@ export class GanttChartComponent {
 				cls: `gantt-header-col-cell ${col.isToday ? 'is-today' : ''} ${col.isWeekend ? 'is-weekend' : ''}`,
 			});
 			cCell.style.width = `${col.width}px`;
-			cCell.createSpan({ cls: 'gantt-header-col-label', text: col.label });
+			cCell.createSpan({
+				cls: 'gantt-header-col-label',
+				text: col.label,
+			});
 			if (col.subLabel) {
-				cCell.createSpan({ cls: 'gantt-header-col-sub', text: col.subLabel });
+				cCell.createSpan({
+					cls: 'gantt-header-col-sub',
+					text: col.subLabel,
+				});
 			}
 		}
 
 		// Timeline Body — the ONLY scrollable element in the right pane
-		this.timelineScrollEl = container.createDiv({ cls: 'gantt-right-body' });
-		this.gridContainerEl = this.timelineScrollEl.createDiv({ cls: 'gantt-grid-container' });
+		this.timelineScrollEl = container.createDiv({
+			cls: 'gantt-right-body',
+		});
+		this.gridContainerEl = this.timelineScrollEl.createDiv({
+			cls: 'gantt-grid-container',
+		});
 		this.gridContainerEl.style.width = `${totalWidth}px`;
 
 		// Grid background columns
@@ -359,7 +504,9 @@ export class GanttChartComponent {
 		this.renderTodayLine(this.gridContainerEl);
 
 		// Rows Container
-		const rowsContainer = this.gridContainerEl.createDiv({ cls: 'gantt-rows-container' });
+		const rowsContainer = this.gridContainerEl.createDiv({
+			cls: 'gantt-rows-container',
+		});
 
 		for (const item of renderItems) {
 			if (item.type === 'folder') {
@@ -375,13 +522,20 @@ export class GanttChartComponent {
 
 				if (node.startDate && node.endDate) {
 					const leftPx = this.calculateLeftPosition(node.startDate);
-					const widthPx = this.calculateWidth(node.startDate, node.endDate);
+					const widthPx = this.calculateWidth(
+						node.startDate,
+						node.endDate,
+					);
 
-					const projectBar = groupRow.createDiv({ cls: 'gantt-project-summary-bar' });
+					const projectBar = groupRow.createDiv({
+						cls: 'gantt-project-summary-bar',
+					});
 					projectBar.style.left = `${leftPx}px`;
 					projectBar.style.width = `${widthPx}px`;
 
-					const progressFill = projectBar.createDiv({ cls: 'gantt-project-progress-fill' });
+					const progressFill = projectBar.createDiv({
+						cls: 'gantt-project-progress-fill',
+					});
 					progressFill.style.width = `${node.progress}%`;
 
 					projectBar.createSpan({
@@ -390,11 +544,16 @@ export class GanttChartComponent {
 					});
 				}
 
-				groupRow.onmouseenter = () => this.highlightGroupRow(item.id, true);
-				groupRow.onmouseleave = () => this.highlightGroupRow(item.id, false);
+				groupRow.onmouseenter = () =>
+					this.highlightGroupRow(item.id, true);
+				groupRow.onmouseleave = () =>
+					this.highlightGroupRow(item.id, false);
 			} else {
 				const task = item.task;
-				const rowEl = rowsContainer.createDiv({ cls: `gantt-timeline-row level-${item.level}` });
+				const isChild = !!item.isChildOfBg;
+				const rowEl = rowsContainer.createDiv({
+					cls: `gantt-timeline-row level-${item.level} ${isChild ? 'is-bg-child' : ''}`,
+				});
 				rowEl.dataset.taskId = task.id;
 
 				this.renderInteractiveTaskBar(rowEl, task);
@@ -403,17 +562,28 @@ export class GanttChartComponent {
 				rowEl.onmouseleave = () => this.highlightRow(task.id, false);
 			}
 		}
+
+		// Render Git Flow connection lines & arrows between BG and TK tasks
+		this.renderGitFlowConnections(
+			this.gridContainerEl,
+			renderItems,
+			rowsContainer,
+		);
 	}
 
 	private renderTodayLine(container: HTMLElement): void {
 		const today = startOfDay(new Date());
-		const todayColIndex = this.columns.findIndex((c) => c.isToday || isSameDay(c.date, today));
+		const todayColIndex = this.columns.findIndex(
+			(c) => c.isToday || isSameDay(c.date, today),
+		);
 		let leftPos: number;
 		const defaultWidth = this.columns[0]?.width || 36;
 		let colWidth = defaultWidth;
 
 		if (todayColIndex !== -1) {
-			leftPos = this.columns.slice(0, todayColIndex).reduce((acc, c) => acc + c.width, 0);
+			leftPos = this.columns
+				.slice(0, todayColIndex)
+				.reduce((acc, c) => acc + c.width, 0);
 			colWidth = this.columns[todayColIndex]?.width || defaultWidth;
 		} else {
 			leftPos = this.calculateLeftPosition(today);
@@ -432,11 +602,20 @@ export class GanttChartComponent {
 	private renderInteractiveTaskBar(rowEl: HTMLElement, task: Task): void {
 		const span = this.getTaskSpan(task);
 		const initialLeftPx = this.calculateLeftPosition(span.startDate);
-		const initialWidthPx = this.calculateWidth(span.startDate, span.endDate);
+		const initialWidthPx = this.calculateWidth(
+			span.startDate,
+			span.endDate,
+		);
 
 		const barEl = rowEl.createDiv({ cls: 'gantt-task-bar' });
 		barEl.style.left = `${initialLeftPx}px`;
 		barEl.style.width = `${initialWidthPx}px`;
+
+		if (task.tipo === 'bg' || (task.child && task.child.length > 0)) {
+			barEl.addClass('is-bg-task');
+		} else if (task.parentBg) {
+			barEl.addClass('is-tk-task');
+		}
 
 		// Left Resize Handle
 		const leftHandle = barEl.createDiv({
@@ -447,13 +626,19 @@ export class GanttChartComponent {
 		// Inner Content Area (Clean colored segments/flow)
 		const contentArea = barEl.createDiv({ cls: 'gantt-bar-inner-content' });
 
-		const totalBarDays = Math.max(1, diffInDays(span.startDate, span.endDate) + 1);
+		const totalBarDays = Math.max(
+			1,
+			diffInDays(span.startDate, span.endDate) + 1,
+		);
 
 		if (this.showSegments && task.segments.length > 0) {
 			barEl.addClass('is-segmented');
 			this.renderSegmentedBar(contentArea, task, totalBarDays);
 		} else {
-			const statusColor = getStatusColor(task.status, this.plugin.settings.statuses);
+			const statusColor = getStatusColor(
+				task.status,
+				this.plugin.settings.statuses,
+			);
 			barEl.style.backgroundColor = statusColor;
 		}
 
@@ -481,20 +666,34 @@ export class GanttChartComponent {
 					.setTitle('Abrir nota')
 					.setIcon('file-text')
 					.onClick(() => {
-						void this.plugin.app.workspace.getLeaf(false).openFile(task.file);
-					})
+						void this.plugin.app.workspace
+							.getLeaf(false)
+							.openFile(task.file);
+					}),
 			);
 			menu.addItem((item) =>
 				item
 					.setTitle('Editar tarefa')
 					.setIcon('pencil')
-					.onClick(() => new TaskModal(this.plugin.app, this.plugin, task).open())
+					.onClick(() =>
+						new TaskModal(
+							this.plugin.app,
+							this.plugin,
+							task,
+						).open(),
+					),
 			);
 			menu.addItem((item) =>
 				item
 					.setTitle('Alterar status')
 					.setIcon('check-circle')
-					.onClick(() => new StatusPickerModal(this.plugin.app, this.plugin, task).open())
+					.onClick(() =>
+						new StatusPickerModal(
+							this.plugin.app,
+							this.plugin,
+							task,
+						).open(),
+					),
 			);
 			menu.addSeparator();
 			menu.addItem((item) =>
@@ -502,7 +701,7 @@ export class GanttChartComponent {
 					.setTitle('Excluir tarefa')
 					.setIcon('trash')
 					.setWarning(true)
-					.onClick(() => this.plugin.taskManager.deleteTask(task))
+					.onClick(() => this.plugin.taskManager.deleteTask(task)),
 			);
 			menu.showAtMouseEvent(e);
 		};
@@ -513,7 +712,7 @@ export class GanttChartComponent {
 		leftHandle: HTMLElement,
 		rightHandle: HTMLElement,
 		task: Task,
-		initialSpan: { startDate: Date; endDate: Date }
+		initialSpan: { startDate: Date; endDate: Date },
 	): void {
 		let dragType: 'left' | 'right' | 'move' | null = null;
 		let startMouseX = 0;
@@ -523,9 +722,13 @@ export class GanttChartComponent {
 		let currentEnd = new Date(initialSpan.endDate.getTime());
 
 		const getTooltipEl = () => {
-			let tt = document.body.querySelector('.gantt-drag-floating-tooltip') as HTMLElement;
+			let tt = document.body.querySelector(
+				'.gantt-drag-floating-tooltip',
+			) as HTMLElement;
 			if (!tt) {
-				tt = document.body.createDiv({ cls: 'gantt-drag-floating-tooltip' });
+				tt = document.body.createDiv({
+					cls: 'gantt-drag-floating-tooltip',
+				});
 			}
 			return tt;
 		};
@@ -548,13 +751,18 @@ export class GanttChartComponent {
 				if (candidateStart <= currentEnd) {
 					currentStart = candidateStart;
 					const newLeft = this.calculateLeftPosition(currentStart);
-					const newWidth = this.calculateWidth(currentStart, currentEnd);
+					const newWidth = this.calculateWidth(
+						currentStart,
+						currentEnd,
+					);
 
 					barEl.style.left = `${newLeft}px`;
 					barEl.style.width = `${newWidth}px`;
 
 					const tt = getTooltipEl();
-					tt.setText(`📅 Início: ${formatDate(currentStart, 'DD-MM-YYYY')}`);
+					tt.setText(
+						`📅 Início: ${formatDate(currentStart, 'DD-MM-YYYY')}`,
+					);
 					tt.style.top = `${e.clientY - 34}px`;
 					tt.style.left = `${e.clientX + 14}px`;
 				}
@@ -562,12 +770,17 @@ export class GanttChartComponent {
 				const candidateEnd = this.getDateFromPixelX(pixelX);
 				if (candidateEnd >= currentStart) {
 					currentEnd = candidateEnd;
-					const newWidth = this.calculateWidth(currentStart, currentEnd);
+					const newWidth = this.calculateWidth(
+						currentStart,
+						currentEnd,
+					);
 
 					barEl.style.width = `${newWidth}px`;
 
 					const tt = getTooltipEl();
-					tt.setText(`📅 Fim: ${formatDate(currentEnd, 'DD-MM-YYYY')}`);
+					tt.setText(
+						`📅 Fim: ${formatDate(currentEnd, 'DD-MM-YYYY')}`,
+					);
 					tt.style.top = `${e.clientY - 34}px`;
 					tt.style.left = `${e.clientX + 14}px`;
 				}
@@ -585,7 +798,7 @@ export class GanttChartComponent {
 				const sign = deltaDays >= 0 ? `+${deltaDays}` : `${deltaDays}`;
 				const tt = getTooltipEl();
 				tt.setText(
-					`📅 ${formatDate(currentStart, 'DD-MM-YYYY')} → ${formatDate(currentEnd, 'DD-MM-YYYY')} (${sign}d)`
+					`📅 ${formatDate(currentStart, 'DD-MM-YYYY')} → ${formatDate(currentEnd, 'DD-MM-YYYY')} (${sign}d)`,
 				);
 				tt.style.top = `${e.clientY - 34}px`;
 				tt.style.left = `${e.clientX + 14}px`;
@@ -601,13 +814,19 @@ export class GanttChartComponent {
 			if (!dragType) return;
 
 			if (hasMoved) {
-				void this.plugin.taskManager.updateTaskDates(task, currentStart, currentEnd);
+				void this.plugin.taskManager.updateTaskDates(
+					task,
+					currentStart,
+					currentEnd,
+				);
 			} else if (dragType === 'move') {
 				// Clean click without drag -> Open note in Obsidian workspace
 				if (this.plugin.settings.clickAction === 'edit-modal') {
 					new TaskModal(this.plugin.app, this.plugin, task).open();
 				} else {
-					void this.plugin.app.workspace.getLeaf(false).openFile(task.file);
+					void this.plugin.app.workspace
+						.getLeaf(false)
+						.openFile(task.file);
 				}
 			}
 
@@ -655,14 +874,20 @@ export class GanttChartComponent {
 		};
 	}
 
-	private renderSegmentedBar(container: HTMLElement, task: Task, totalBarDays: number): void {
+	private renderSegmentedBar(
+		container: HTMLElement,
+		task: Task,
+		totalBarDays: number,
+	): void {
 		for (const seg of task.segments) {
 			const pct = (seg.durationDays / Math.max(1, totalBarDays)) * 100;
 			const segEl = container.createDiv({
 				cls: `gantt-bar-segment ${seg.isRework ? 'is-rework' : ''}`,
 			});
 			segEl.style.width = `${pct}%`;
-			segEl.style.backgroundColor = seg.color || getStatusColor(seg.status, this.plugin.settings.statuses);
+			segEl.style.backgroundColor =
+				seg.color ||
+				getStatusColor(seg.status, this.plugin.settings.statuses);
 			segEl.title = `${seg.status}: ${seg.durationDays}d (${seg.formattedStart} - ${seg.formattedEnd})${
 				seg.isRework ? ' [Rework]' : ''
 			}`;
@@ -695,8 +920,13 @@ export class GanttChartComponent {
 				const nextCol = this.columns[i + 1];
 
 				if (!nextCol || target < nextCol.date) {
-					const colSpanDays = nextCol ? Math.max(1, diffInDays(col.date, nextCol.date)) : 7;
-					const daysIntoCol = Math.max(0, diffInDays(col.date, target));
+					const colSpanDays = nextCol
+						? Math.max(1, diffInDays(col.date, nextCol.date))
+						: 7;
+					const daysIntoCol = Math.max(
+						0,
+						diffInDays(col.date, target),
+					);
 					const fraction = Math.min(1, daysIntoCol / colSpanDays);
 					return Math.max(0, accumulated + fraction * col.width);
 				}
@@ -732,8 +962,13 @@ export class GanttChartComponent {
 				const nextCol = this.columns[i + 1];
 
 				if (pixelX <= accumulated + col.width || !nextCol) {
-					const fraction = Math.max(0, Math.min(1, (pixelX - accumulated) / col.width));
-					const colSpanDays = nextCol ? Math.max(1, diffInDays(col.date, nextCol.date)) : 7;
+					const fraction = Math.max(
+						0,
+						Math.min(1, (pixelX - accumulated) / col.width),
+					);
+					const colSpanDays = nextCol
+						? Math.max(1, diffInDays(col.date, nextCol.date))
+						: 7;
 					const dayOffset = Math.floor(fraction * colSpanDays);
 					return addDays(col.date, dayOffset);
 				}
@@ -745,12 +980,15 @@ export class GanttChartComponent {
 
 	private attachTooltip(el: HTMLElement, task: Task): void {
 		el.onmouseenter = (e) => {
-			if (document.body.querySelector('.gantt-drag-floating-tooltip')) return;
+			if (document.body.querySelector('.gantt-drag-floating-tooltip'))
+				return;
 			if (el.hasClass('is-moving')) return;
 
 			this.removeAllTooltips();
 
-			const tooltip = document.body.createDiv({ cls: 'gantt-custom-tooltip' });
+			const tooltip = document.body.createDiv({
+				cls: 'gantt-custom-tooltip',
+			});
 			tooltip.createDiv({ cls: 'gantt-tooltip-title', text: task.title });
 
 			const metaRow = tooltip.createDiv({ cls: 'gantt-tooltip-meta' });
@@ -758,12 +996,19 @@ export class GanttChartComponent {
 			metaRow.createSpan({ text: `⚡ Status: ${task.status}` });
 
 			const dateRow = tooltip.createDiv({ cls: 'gantt-tooltip-dates' });
-			dateRow.createSpan({ text: `📅 ${task.formattedStart || '-'} → ${task.formattedEnd || '-'}` });
+			dateRow.createSpan({
+				text: `📅 ${task.formattedStart || '-'} → ${task.formattedEnd || '-'}`,
+			});
 			dateRow.createSpan({ text: `⏱ Total: ${task.totalLeadTimeDays}d` });
 
 			if (task.history.length > 0) {
-				tooltip.createDiv({ cls: 'gantt-tooltip-hist-header', text: 'Status History Flow:' });
-				const histList = tooltip.createDiv({ cls: 'gantt-tooltip-hist-list' });
+				tooltip.createDiv({
+					cls: 'gantt-tooltip-hist-header',
+					text: 'Status History Flow:',
+				});
+				const histList = tooltip.createDiv({
+					cls: 'gantt-tooltip-hist-list',
+				});
 				for (const h of task.history) {
 					histList.createDiv({
 						cls: 'gantt-tooltip-hist-item',
@@ -794,8 +1039,336 @@ export class GanttChartComponent {
 		};
 	}
 
+	private renderGitFlowConnections(
+		container: HTMLElement,
+		renderItems: TreeRenderItem[],
+		rowsContainer: HTMLElement,
+	): void {
+		// Clean up existing svg
+		container
+			.querySelectorAll('.gantt-gitflow-svg')
+			.forEach((el) => el.remove());
+
+		const rowElements = Array.from(rowsContainer.children) as HTMLElement[];
+		const taskItemMap = new Map<
+			string,
+			{
+				item: TreeRenderItem;
+				rowEl: HTMLElement;
+				barEl: HTMLElement | null;
+				index: number;
+				task: Task;
+				span: { startDate: Date; endDate: Date };
+				leftPx: number;
+				widthPx: number;
+				centerY: number;
+			}
+		>();
+
+		for (let i = 0; i < renderItems.length; i++) {
+			const item = renderItems[i]!;
+			if (item.type === 'task') {
+				const rowEl = rowElements[i];
+				if (!rowEl) continue;
+				const barEl =
+					rowEl.querySelector<HTMLElement>('.gantt-task-bar');
+				const span = this.getTaskSpan(item.task);
+				const leftPx = this.calculateLeftPosition(span.startDate);
+				const widthPx = this.calculateWidth(
+					span.startDate,
+					span.endDate,
+				);
+				const centerY = rowEl.offsetTop + rowEl.offsetHeight / 2;
+
+				taskItemMap.set(item.task.id, {
+					item,
+					rowEl,
+					barEl,
+					index: i,
+					task: item.task,
+					span,
+					leftPx,
+					widthPx,
+					centerY,
+				});
+			}
+		}
+
+		const GITFLOW_BRANCH_COLORS = [
+			'#8b8b9e', // Slate
+			'#7c8ea0', // Steel
+			'#8e7c9e', // Mauve
+			'#7c9e8e', // Sage
+			'#9e8e7c', // Taupe
+			'#7c8e9e', // Dusty blue
+			'#9e7c8e', // Dusty rose
+		];
+
+		const allTasks = renderItems
+			.filter(
+				(it): it is TreeRenderItem & { type: 'task' } =>
+					it.type === 'task',
+			)
+			.map((it) => it.task);
+
+		const connections: Array<{
+			bgTask: Task;
+			tkTask: Task;
+			bgInfo: {
+				leftPx: number;
+				widthPx: number;
+				centerY: number;
+				rowEl: HTMLElement;
+				barEl: HTMLElement | null;
+			};
+			tkInfo: {
+				leftPx: number;
+				widthPx: number;
+				centerY: number;
+				rowEl: HTMLElement;
+				barEl: HTMLElement | null;
+			};
+			branchColor: string;
+		}> = [];
+
+		let colorIdx = 0;
+		for (const item of renderItems) {
+			if (
+				item.type === 'task' &&
+				item.task.child &&
+				item.task.child.length > 0
+			) {
+				const bgInfo = taskItemMap.get(item.task.id);
+				if (!bgInfo) continue;
+
+				for (const childRef of item.task.child) {
+					const tkTask = TaskParser.findTaskByRef(allTasks, childRef);
+					if (!tkTask || tkTask.id === item.task.id) continue;
+
+					const tkInfo = taskItemMap.get(tkTask.id);
+					if (!tkInfo) continue;
+
+					const branchColor =
+						GITFLOW_BRANCH_COLORS[
+							colorIdx % GITFLOW_BRANCH_COLORS.length
+						]!;
+					colorIdx++;
+
+					connections.push({
+						bgTask: item.task,
+						tkTask,
+						bgInfo,
+						tkInfo,
+						branchColor,
+					});
+				}
+			}
+		}
+
+		if (connections.length === 0) return;
+
+		// Create SVG overlay
+		const totalWidth = this.columns.reduce(
+			(acc, col) => acc + col.width,
+			0,
+		);
+		const svg = container.createSvg('svg', { cls: 'gantt-gitflow-svg' });
+		svg.style.width = `${totalWidth}px`;
+		svg.style.height = `${rowsContainer.scrollHeight || rowsContainer.offsetHeight || 500}px`;
+
+		const defs = svg.createSvg('defs');
+
+		const createdColors = new Set<string>();
+		for (const conn of connections) {
+			if (!createdColors.has(conn.branchColor)) {
+				createdColors.add(conn.branchColor);
+				const markerId = `gitflow-arrow-${conn.branchColor.replace('#', '')}`;
+
+				const marker = defs.createSvg('marker', {
+					attr: {
+						id: markerId,
+						viewBox: '0 0 10 10',
+						refX: '8',
+						refY: '5',
+						markerWidth: '4',
+						markerHeight: '4',
+						orient: 'auto',
+					},
+				});
+				marker.createSvg('polygon', {
+					attr: {
+						points: '0 2, 8 5, 0 8',
+						fill: conn.branchColor,
+					},
+				});
+			}
+		}
+
+		for (const conn of connections) {
+			const { bgInfo, tkInfo, branchColor, bgTask, tkTask } = conn;
+
+			// Branch point on BG bar
+			let x1: number;
+			if (
+				tkInfo.leftPx >= bgInfo.leftPx &&
+				tkInfo.leftPx <= bgInfo.leftPx + bgInfo.widthPx
+			) {
+				x1 = tkInfo.leftPx;
+			} else if (tkInfo.leftPx > bgInfo.leftPx + bgInfo.widthPx) {
+				x1 = bgInfo.leftPx + bgInfo.widthPx;
+			} else {
+				x1 = bgInfo.leftPx;
+			}
+			const y1 = bgInfo.centerY;
+
+			// Target point on TK bar (left edge)
+			const x2 = tkInfo.leftPx;
+			const y2 = tkInfo.centerY;
+
+			let d: string;
+			if (x2 >= x1 + 14) {
+				const dx = Math.max(20, (x2 - x1) * 0.45);
+				d = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+			} else {
+				const curveX = Math.min(x1, x2) - 24;
+				d = `M ${x1} ${y1} C ${curveX} ${y1}, ${curveX} ${y2}, ${x2} ${y2}`;
+			}
+
+			const markerId = `gitflow-arrow-${branchColor.replace('#', '')}`;
+
+			const group = svg.createSvg('g', { cls: 'gantt-gitflow-branch' });
+			group.dataset.bgId = bgTask.id;
+			group.dataset.tkId = tkTask.id;
+
+			// Hit area for hover interaction
+			const hitArea = group.createSvg('path', {
+				cls: 'gantt-gitflow-hitarea',
+				attr: {
+					d,
+					stroke: 'transparent',
+					'stroke-width': '10',
+					fill: 'none',
+				},
+			});
+
+			// Visible line with arrow
+			group.createSvg('path', {
+				cls: 'gantt-gitflow-line',
+				attr: {
+					d,
+					stroke: branchColor,
+					'stroke-width': '1.5',
+					fill: 'none',
+					'marker-end': `url(#${markerId})`,
+				},
+			});
+
+			// Commit dot on BG bar
+			group.createSvg('circle', {
+				cls: 'gantt-gitflow-node',
+				attr: {
+					cx: String(x1),
+					cy: String(y1),
+					r: '2.5',
+					fill: branchColor,
+					stroke: 'var(--background-primary)',
+					'stroke-width': '1',
+				},
+			});
+
+			const highlightConnection = (highlight: boolean) => {
+				if (highlight) {
+					group.addClass('is-active');
+					bgInfo.rowEl.addClass('is-gitflow-highlighted');
+					tkInfo.rowEl.addClass('is-gitflow-highlighted');
+					if (bgInfo.barEl)
+						bgInfo.barEl.addClass('is-gitflow-highlighted');
+					if (tkInfo.barEl)
+						tkInfo.barEl.addClass('is-gitflow-highlighted');
+				} else {
+					group.removeClass('is-active');
+					bgInfo.rowEl.removeClass('is-gitflow-highlighted');
+					tkInfo.rowEl.removeClass('is-gitflow-highlighted');
+					if (bgInfo.barEl)
+						bgInfo.barEl.removeClass('is-gitflow-highlighted');
+					if (tkInfo.barEl)
+						tkInfo.barEl.removeClass('is-gitflow-highlighted');
+				}
+			};
+
+			hitArea.onmouseenter = (e) => {
+				highlightConnection(true);
+				this.showGitFlowTooltip(e, bgTask, tkTask);
+			};
+
+			hitArea.onmousemove = (e) => {
+				this.updateGitFlowTooltipPos(e);
+			};
+
+			hitArea.onmouseleave = () => {
+				highlightConnection(false);
+				this.hideGitFlowTooltip();
+			};
+
+			bgInfo.rowEl.addEventListener('mouseenter', () =>
+				highlightConnection(true),
+			);
+			bgInfo.rowEl.addEventListener('mouseleave', () =>
+				highlightConnection(false),
+			);
+
+			tkInfo.rowEl.addEventListener('mouseenter', () =>
+				highlightConnection(true),
+			);
+			tkInfo.rowEl.addEventListener('mouseleave', () =>
+				highlightConnection(false),
+			);
+		}
+	}
+
+	private showGitFlowTooltip(
+		e: MouseEvent,
+		bgTask: Task,
+		tkTask: Task,
+	): void {
+		this.hideGitFlowTooltip();
+		const tt = document.body.createDiv({
+			cls: 'gantt-custom-tooltip gantt-gitflow-tooltip',
+		});
+		const title = tt.createDiv({ cls: 'gantt-tooltip-title' });
+		title.createSpan({ text: ' ⎇ : ' });
+		title.createSpan({ text: bgTask.title, cls: 'gantt-tooltip-bg-name' });
+		title.createSpan({ text: ' ➔ ' });
+		title.createSpan({ text: tkTask.title, cls: 'gantt-tooltip-tk-name' });
+
+		const meta = tt.createDiv({ cls: 'gantt-tooltip-meta' });
+		meta.createSpan({ text: `📁 Backlog: ${bgTask.status}` });
+		meta.createSpan({ text: `⚡ Task: ${tkTask.status}` });
+
+		tt.style.top = `${e.clientY + 14}px`;
+		tt.style.left = `${e.clientX + 14}px`;
+	}
+
+	private updateGitFlowTooltipPos(e: MouseEvent): void {
+		const tt = document.body.querySelector(
+			'.gantt-gitflow-tooltip',
+		) as HTMLElement;
+		if (tt) {
+			tt.style.top = `${e.clientY + 14}px`;
+			tt.style.left = `${e.clientX + 14}px`;
+		}
+	}
+
+	private hideGitFlowTooltip(): void {
+		document
+			.querySelectorAll('.gantt-gitflow-tooltip')
+			.forEach((el) => el.remove());
+	}
+
 	private highlightRow(taskId: string, highlight: boolean): void {
-		const rows = this.containerEl.querySelectorAll(`[data-task-id="${CSS.escape(taskId)}"]`);
+		const rows = this.containerEl.querySelectorAll(
+			`[data-task-id="${CSS.escape(taskId)}"]`,
+		);
 		rows.forEach((r) => {
 			if (highlight) r.addClass('is-hovered');
 			else r.removeClass('is-hovered');
@@ -803,7 +1376,9 @@ export class GanttChartComponent {
 	}
 
 	private highlightGroupRow(groupId: string, highlight: boolean): void {
-		const rows = this.containerEl.querySelectorAll(`[data-group-id="${CSS.escape(groupId)}"]`);
+		const rows = this.containerEl.querySelectorAll(
+			`[data-group-id="${CSS.escape(groupId)}"]`,
+		);
 		rows.forEach((r) => {
 			if (highlight) r.addClass('is-hovered');
 			else r.removeClass('is-hovered');

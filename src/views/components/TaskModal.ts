@@ -18,9 +18,10 @@ export class TaskModal extends Modal {
 
 	// Form fields
 	private title: string = '';
-	private tipo: 'css' | 'pbi' = 'css';
+	private tipo: 'bg' | 'css' | 'pbi' = 'pbi';
 	private taskId: string = '';
 	private projeto: string = 'Agência Virtual';
+	private child: string = '';
 	private folder: string = '';
 	private startDate: Date | null = null;
 	private endDate: Date | null = null;
@@ -42,7 +43,7 @@ export class TaskModal extends Modal {
 
 		if (task) {
 			this.title = task.title;
-			this.tipo = task.tipo || (task.title.startsWith('CSS-') ? 'css' : 'pbi');
+			this.tipo = task.tipo || (task.title.startsWith('BG-') ? 'bg' : task.title.startsWith('CSS-') ? 'css' : 'pbi');
 			this.folder = task.file.parent?.path || '';
 			this.startDate = task.startDate;
 			this.endDate = task.endDate;
@@ -50,6 +51,7 @@ export class TaskModal extends Modal {
 			this.tags = [...task.tags];
 			this.link = task.link ? [...task.link] : [];
 			this.tarefa = task.tarefa ? [...task.tarefa] : [];
+			this.child = task.child ? task.child.map((c) => (c.startsWith('[[') ? c : `[[${c}]]`)).join(', ') : '';
 			this.priority = task.priority;
 			this.bodyContent = task.bodyContent;
 			this.history = JSON.parse(JSON.stringify(task.history)) as HistoryEntry[];
@@ -71,16 +73,17 @@ export class TaskModal extends Modal {
 		});
 
 		if (this.isNew) {
-			// Tipo (CSS or PBI / Task)
+			// Tipo (BG, CSS or PBI / Task)
 			new Setting(contentEl)
 				.setName('Tipo')
 				.setDesc('Selecione o tipo de tarefa')
 				.addDropdown((dropdown) => {
+					dropdown.addOption('bg', 'BG (backlog)');
+					dropdown.addOption('pbi', 'PBI / task');
 					dropdown.addOption('css', 'CSS');
-					dropdown.addOption('pbi', 'Pbi / task');
 					dropdown.setValue(this.tipo);
 					dropdown.onChange((val: string) => {
-						this.tipo = val as 'css' | 'pbi';
+						this.tipo = val as 'bg' | 'css' | 'pbi';
 						updatePlaceholder();
 					});
 				});
@@ -93,22 +96,51 @@ export class TaskModal extends Modal {
 			let idInput: HTMLInputElement | null = null;
 			idSetting.addText((text) => {
 				idInput = text.inputEl;
-				text.setPlaceholder('Ex: 221611')
+				text.setPlaceholder('Ex: 3019 ou implementar login')
 					.setValue(this.taskId)
 					.onChange((val) => {
 						this.taskId = val.trim();
-						this.title = this.tipo === 'css' && !this.taskId.startsWith('CSS-') ? `CSS-${this.taskId}` : this.taskId;
+						if (this.tipo === 'bg' && !this.taskId.startsWith('BG-') && !this.taskId.startsWith('BG')) {
+							this.title = `BG-${this.taskId}`;
+						} else if (this.tipo === 'css' && !this.taskId.startsWith('CSS-')) {
+							this.title = `CSS-${this.taskId}`;
+						} else {
+							this.title = this.taskId;
+						}
 					});
 			});
 
 			const updatePlaceholder = () => {
 				if (idInput) {
-					idInput.placeholder = this.tipo === 'css' ? 'Ex: 221611' : 'Ex: Implementar login ou 12345';
+					idInput.placeholder =
+						this.tipo === 'bg'
+							? 'Ex: 3019 ou feature autenticação'
+							: this.tipo === 'css'
+							? 'Ex: 221611'
+							: 'Ex: TK-3019 ou implementar login';
 				}
 				if (this.taskId) {
-					this.title = this.tipo === 'css' && !this.taskId.startsWith('CSS-') ? `CSS-${this.taskId}` : this.taskId;
+					if (this.tipo === 'bg' && !this.taskId.startsWith('BG-') && !this.taskId.startsWith('BG')) {
+						this.title = `BG-${this.taskId}`;
+					} else if (this.tipo === 'css' && !this.taskId.startsWith('CSS-')) {
+						this.title = `CSS-${this.taskId}`;
+					} else {
+						this.title = this.taskId;
+					}
 				}
 			};
+
+			// Child Task (TK) for BG notes or tasks
+			new Setting(contentEl)
+				.setName('Child task (TK)')
+				.setDesc('Nota TK associada a este backlog (ex: [[TK-3019]] ou TK-3019)')
+				.addText((text) => {
+					text.setPlaceholder('Ex: [[TK-3019]]')
+						.setValue(this.child)
+						.onChange((val) => {
+							this.child = val.trim();
+						});
+				});
 
 			// Projeto Dropdown matching Templater
 			const opcoesProjetos = [
@@ -170,6 +202,18 @@ export class TaskModal extends Modal {
 						this.title = val;
 					})
 			);
+
+			// Child Task (TK) for existing task
+			new Setting(contentEl)
+				.setName('Child task (TK)')
+				.setDesc('Nota TK associada a este backlog (ex: [[TK-3019]])')
+				.addText((text) => {
+					text.setPlaceholder('Ex: [[TK-3019]]')
+						.setValue(this.child)
+						.onChange((val) => {
+							this.child = val.trim();
+						});
+				});
 		}
 
 		// Status Dropdown
@@ -405,10 +449,24 @@ export class TaskModal extends Modal {
 	}
 
 	private async saveTask(): Promise<void> {
+		const cleanChildList = this.child
+			? this.child
+					.split(',')
+					.map((c) => {
+						const match = c.match(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/);
+						return match && match[1] ? match[1].trim() : c.replace(/^['"](.*)['"]$/, '$1').trim();
+					})
+					.filter(Boolean)
+			: [];
+
 		if (this.isNew) {
 			const cleanId = this.taskId.trim() || this.title.trim() || 'Tarefa';
-			const finalTitle =
-				this.tipo === 'css' && !cleanId.startsWith('CSS-') ? `CSS-${cleanId}` : cleanId;
+			let finalTitle = cleanId;
+			if (this.tipo === 'bg' && !cleanId.startsWith('BG-') && !cleanId.startsWith('BG')) {
+				finalTitle = `BG-${cleanId}`;
+			} else if (this.tipo === 'css' && !cleanId.startsWith('CSS-')) {
+				finalTitle = `CSS-${cleanId}`;
+			}
 
 			await this.plugin.taskManager.createTask({
 				title: finalTitle,
@@ -427,6 +485,7 @@ export class TaskModal extends Modal {
 					this.tipo === 'css'
 						? [`https://css.sefaz.es.gov.br/front/ticket.form.php?id=${cleanId}`]
 						: undefined,
+				child: cleanChildList.length > 0 ? cleanChildList : undefined,
 			});
 		} else if (this.task) {
 			const file = this.task.file;
@@ -457,6 +516,14 @@ export class TaskModal extends Modal {
 				priority: this.priority && this.priority !== 'normal' ? this.priority : undefined,
 				tags: this.tags.length > 0 ? this.tags : undefined,
 			};
+
+			if (cleanChildList.length > 0) {
+				updatedFm['child'] = cleanChildList.map((c) => `[[${c}]]`);
+			} else {
+				delete updatedFm['child'];
+				delete updatedFm['children'];
+				delete updatedFm['-child'];
+			}
 
 			if (this.task.link) updatedFm['link'] = this.task.link;
 			if (this.task.tarefa) updatedFm['tarefa'] = this.task.tarefa;
